@@ -1,0 +1,26 @@
+# Build output and local tooling
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+.vs/
+.idea/
+.vscode/
+.DS_Store
+*.user
+*.suo
+*.nupkg
+*.snupkg
+
+# Local credentials and development overrides
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.key
+appsettings.Local.json
+.nuget/
+
+# Local implementation guidance
+AGENTS.md

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>bijecta-auth</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+    <ProjectReference Include="../../src/Bijecta.CliAuth.Core/Bijecta.CliAuth.Core.csproj" />
+    <ProjectReference Include="../../src/Bijecta.CliAuth.Extensions/Bijecta.CliAuth.Extensions.csproj" />
+    <!-- Platform storage is explicitly selected when persistence is implemented. -->
+  </ItemGroup>
+</Project>

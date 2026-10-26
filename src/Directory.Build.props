@@ -1,0 +1,15 @@
+<Project>
+  <Import Project="../Directory.Build.props" />
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Description>Browser and device authentication for .NET command-line applications. Initial scaffold; authentication is not implemented.</Description>
+    <!-- Final author, license, repository and release metadata are set before publication. -->
+    <Authors>Bijecta.CliAuth contributors</Authors>
+    <PackageTags>cli;oauth;oidc;authentication</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+</Project>

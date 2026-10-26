@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Bijecta.CliAuth.Core/Bijecta.CliAuth.Core.csproj" />
+  </ItemGroup>
+  <Import Project="../Shared.Storage/Shared.Storage.projitems" />
+</Project>
