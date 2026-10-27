@@ -41,8 +41,8 @@ Windows, macOS, and Linux; it does not yet validate native storage on those OSes
 
 ## Implementation order
 
-1. Validate protocol dependencies for browser and device flows.
-2. Core contracts, explicit storage selection, and memory sessions.
+1. Core contracts, explicit storage selection, and memory sessions.
+2. Internal protocol adapters using the [accepted dependency selection](docs/decisions/0003-protocol-dependency-selection.md).
 3. Browser PKCE and device login with a Keycloak sample.
 4. Platform persistence and cross-process session coordination.
 5. Silent refresh, HTTP, and DI integration.

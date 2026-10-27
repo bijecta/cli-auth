@@ -3,6 +3,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Duende.IdentityModel" Version="8.1.0" />
+    <PackageVersion Include="Duende.IdentityModel.OidcClient" Version="7.1.1" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
     <PackageVersion Include="System.CommandLine" Version="2.0.14" />
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.2" />
   </ItemGroup>

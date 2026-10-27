@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="../Directory.Packages.props" />
+  <PropertyGroup>
+    <DuendeOidcClientVersion Condition="'$(DuendeOidcClientVersion)' == ''">7.1.1</DuendeOidcClientVersion>
+    <MicrosoftIdentityModelVersion Condition="'$(MicrosoftIdentityModelVersion)' == ''">8.23.0</MicrosoftIdentityModelVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Update="Duende.IdentityModel.OidcClient" Version="$(DuendeOidcClientVersion)" />
+    <PackageVersion Update="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="$(MicrosoftIdentityModelVersion)" />
+    <PackageVersion Update="System.IdentityModel.Tokens.Jwt" Version="$(MicrosoftIdentityModelVersion)" />
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="$(MicrosoftIdentityModelVersion)" />
+  </ItemGroup>
+</Project>

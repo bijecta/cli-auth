@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MicrosoftBaseline/MicrosoftBaseline.csproj" />
+  <Project Path="ProtocolFeasibility/ProtocolFeasibility.csproj" />
+</Solution>

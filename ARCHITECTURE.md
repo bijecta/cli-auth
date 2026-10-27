@@ -49,8 +49,11 @@ part of the initial public API.
 Consumers configure issuer, client ID, scopes, selected flow, and supported policy
 options. They can supply storage, a browser launcher, and device-code presentation.
 These extension points adapt the host application without bypassing required
-protocol validation. Exact API signatures and protocol dependencies remain subject
-to implementation review.
+protocol validation. Exact API signatures remain subject to implementation review.
+The selected protocol dependencies are Duende.IdentityModel.OidcClient 7.1.1,
+Duende.IdentityModel 8.1.0, and Microsoft IdentityModel components 8.23.0. These
+dependencies are registered in Core; the adapters and flow implementations remain
+planned work.
 
 ## Initialization and login
 
@@ -108,3 +111,5 @@ record the reasons and tradeoffs behind individual decisions:
 
 - [0001: Keep protocol integration internal](docs/decisions/0001-protocol-ownership-and-extension-boundaries.md)
 - [0002: Initialize provider capabilities lazily](docs/decisions/0002-lazy-initialization-and-flow-capabilities.md)
+
+- [0003: Protocol dependency selection](docs/decisions/0003-protocol-dependency-selection.md), supported by [runnable spikes](spikes/README.md)
