@@ -4,7 +4,7 @@
     <IsPackable>true</IsPackable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <Description>Browser and device authentication for .NET command-line applications. Initial scaffold; authentication is not implemented.</Description>
+    <Description>Authentication infrastructure for .NET command-line applications. Early development; browser/device login and protected persistence are not implemented.</Description>
     <!-- Final author, license, repository and release metadata are set before publication. -->
     <Authors>Bijecta.CliAuth contributors</Authors>
     <PackageTags>cli;oauth;oidc;authentication</PackageTags>

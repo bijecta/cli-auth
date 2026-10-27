@@ -3,7 +3,8 @@
 Reusable .NET packages for developers adding browser PKCE and device login to their
 own CLI applications using an OIDC provider such as Keycloak or Okta.
 
-**Status: initial scaffold. No authentication or secure persistence is implemented.**
+**Status: early development. Core configuration, contracts, and memory storage are
+implemented. Browser/device login and protected persistence are not available yet.**
 
 ## Packages
 
@@ -39,9 +40,12 @@ files intentionally after changing dependencies. Test execution uses xUnit v3
 with Microsoft.Testing.Platform. CI runs the build and package-boundary tests on
 Windows, macOS, and Linux; it does not yet validate native storage on those OSes.
 
+See [Core contracts and memory sessions](docs/usage/core-contracts.md) for the first
+implemented feature and its [compiled consumer example](samples/Bijecta.CliAuth.Sample.Cli/Examples/CoreUsage.cs).
+
 ## Implementation order
 
-1. Core contracts, explicit storage selection, and memory sessions.
+1. Core contracts, configuration validation, and memory storage (implemented foundation).
 2. Internal protocol adapters using the [accepted dependency selection](docs/decisions/0003-protocol-dependency-selection.md).
 3. Browser PKCE and device login with a Keycloak sample.
 4. Platform persistence and cross-process session coordination.

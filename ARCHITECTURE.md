@@ -4,10 +4,12 @@ Bijecta.CliAuth is a library for developers adding browser and device authentica
 to their own .NET CLIs. Applications configure their own OAuth 2.0/OIDC provider and
 own the command framework, user interaction, and presentation.
 
-**Current state:** package projects, build configuration, a sample CLI shell, and
-package-boundary checks exist. Authentication, storage backends, HTTP integration,
-and DI registration described below are planned responsibilities, not implemented
-features.
+**Current state:** package projects, build configuration, a sample CLI shell,
+immutable Core configuration/contracts, and process-local memory storage/locks are
+implemented. Internal fake-time status evaluation and behavioral tests cover the
+local session model. There is no concrete authenticator, protocol adapter, protected
+backend, HTTP integration, or DI registration yet. Responsibilities below include
+that planned work; see [Core usage](docs/usage/core-contracts.md) for the delivered boundary.
 
 ## Package boundaries
 
@@ -100,7 +102,8 @@ planned as the first real demonstration of both login flows. Provider support is
 claimed only after testing; an optional single protected API may demonstrate HTTP
 integration. Workers and token exchange are outside scope.
 
-The current automated checks verify project dependency boundaries. Protocol,
+Current automated checks verify package boundaries plus local configuration,
+isolation, redaction, expiry, and process-local memory-store/lock behavior. Protocol,
 native-storage, HTTP, and cross-process behavior tests will be added with those
 features; compiling a backend project does not establish OS support.
 
