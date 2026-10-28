@@ -1,4 +1,5 @@
 #:property TargetFramework=net10.0
+#:property PublishAot=false
 
 using System.Net;
 using System.Runtime.CompilerServices;

@@ -5,6 +5,9 @@ and the single exact redirect `http://127.0.0.1:43821/callback/`. The sample sel
 MemoryOnly explicitly. Its session disappears when the CLI exits; no persistence,
 refresh, device login, or remote logout is demonstrated yet.
 
+The .NET file-based helper explicitly disables Native AOT. It runs using the
+installed SDK/runtime and needs no platform-specific native compiler packages.
+
 The version is pinned to `quay.io/keycloak/keycloak:26.8.1`, matching the
 [official Docker guide](https://www.keycloak.org/getting-started/getting-started-docker).
 It is a version tag, not a verified immutable digest. A **user-run live browser

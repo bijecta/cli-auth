@@ -42,6 +42,10 @@ Use `dotnet restore Bijecta.CliAuth.slnx --force-evaluate` to update committed l
 files intentionally after changing dependencies. Test execution uses xUnit v3
 with Microsoft.Testing.Platform. CI runs the build and package-boundary tests on
 Windows, macOS, and Linux; it does not yet validate native storage on those OSes.
+The OS matrix checks library and sample behavior on each host; it does not produce
+three different versions of the portable Core package. NuGet packing/release checks
+will be a separate step, as will container-based Keycloak/Playwright integration
+tests on Linux. The fixture helper is managed .NET code, with Native AOT disabled.
 
 See [Core contracts](docs/usage/core-contracts.md), [authenticator composition and
 coordination](docs/usage/authenticator-composition.md), and the
