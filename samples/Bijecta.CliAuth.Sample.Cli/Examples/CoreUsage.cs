@@ -2,7 +2,7 @@ using Bijecta.CliAuth.Core;
 
 namespace Bijecta.CliAuth.Sample.Cli.Examples;
 
-// Compiled consumer examples. An authenticator implementation is supplied once the flow feature lands.
+// Compiled consumer examples. Real provider login and refresh remain unavailable until their adapters land.
 internal static class CoreUsage
 {
     internal static OidcProfile CreateDevelopmentProfile() => new(
@@ -14,6 +14,12 @@ internal static class CoreUsage
         persistence: PersistenceMode.MemoryOnly);
 
     internal static MemoryTokenStore CreateDevelopmentStore() => new();
+
+    internal static ICliAuthenticator CreateDevelopmentAuthenticator()
+    {
+        var store = CreateDevelopmentStore();
+        return new CliAuthenticator([CreateDevelopmentProfile()], store, sessionLocks: store);
+    }
 
     internal static Task<LoginResult> BrowserLoginAsync(ICliAuthenticator auth, CancellationToken ct) =>
         auth.LoginAsync("work", new LoginOptions(LoginFlow.Browser), ct);

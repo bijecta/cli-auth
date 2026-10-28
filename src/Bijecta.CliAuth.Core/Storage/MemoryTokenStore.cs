@@ -10,6 +10,9 @@ public sealed class MemoryTokenStore : ITokenStore, ISessionLockProvider
     private readonly ConcurrentDictionary<SessionKey, SemaphoreSlim> _locks = new();
 
     /// <inheritdoc />
+    public PersistenceMode PersistenceMode => PersistenceMode.MemoryOnly;
+
+    /// <inheritdoc />
     public ValueTask<StoredSession?> ReadAsync(SessionKey key, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();

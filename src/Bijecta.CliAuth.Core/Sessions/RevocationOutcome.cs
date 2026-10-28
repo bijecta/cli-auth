@@ -7,7 +7,7 @@ public enum RevocationOutcome
     NotRequested,
     /// <summary>The provider accepted the revocation request.</summary>
     Succeeded,
-    /// <summary>The provider does not expose the requested revocation capability.</summary>
+    /// <summary>The session or provider cannot support the requested refresh-token revocation.</summary>
     Unsupported,
     /// <summary>The remote revocation attempt failed.</summary>
     Failed

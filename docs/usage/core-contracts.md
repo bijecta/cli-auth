@@ -2,12 +2,14 @@
 
 The initial Core feature implements immutable local configuration, safe contract
 models, session isolation, and a process-local memory store with matching locks.
-It defines `ICliAuthenticator`; there is no concrete authenticator, discovery,
-browser/device transaction, refresh, or DI registration yet.
+It defines `ICliAuthenticator`, now implemented by the local session coordinator
+in `CliAuthenticator`. Real discovery, browser/device transactions, refresh, and DI
+registration are not available yet; see [composition](authenticator-composition.md).
 
 The [compiled consumer example](../../samples/Bijecta.CliAuth.Sample.Cli/Examples/CoreUsage.cs)
-shows profile configuration and facade usage. These methods are examples for a
-future injected authenticator; the sample CLI does not expose working login commands.
+shows profile configuration, direct construction, and facade usage. The sample CLI
+does not expose working provider login commands. Browser/device example methods
+show the intended call shape and currently receive UnsupportedCapability.
 
 ## Configuration and flow selection
 
@@ -25,7 +27,16 @@ var store = new MemoryTokenStore();
 
 The persistence setting describes the required policy; it does not select an OS
 backend. Memory-only mode must be intentional. The normal default is Protected;
-a protected backend and host composition will be implemented in later features.
+protected backends will be implemented in later features. The store declares its
+policy through the read-only ITokenStore.PersistenceMode property, and authenticator
+construction rejects profiles with a different policy.
+
+The agreed composition model supports multiple named profiles with one shared
+storage/locking setup per authenticator. All profiles must match its persistence
+policy; duplicate names are rejected. Per-profile backend selection is deferred.
+This policy is recorded in [ADR 0004](../decisions/0004-authenticator-storage-and-profile-scope.md);
+direct construction and persistence compatibility checks are implemented. Provider
+capability checks remain part of the upcoming real protocol adapters.
 
 Profile construction validates local values without contacting a provider. It
 includes `openid`; `profile` and `offline_access` are opt-in. Scope collections are
@@ -91,8 +102,9 @@ Repeated deletion advances the marker again. Unknown schemas are rejected before
 an envelope is accepted. Credential-free lifecycle markers cannot carry tokens.
 
 The store is an advanced extension contract, not an authenticator: it does not
-validate protocol responses or enforce stale-writer checks by itself. The upcoming
-coordinator must hold the shared lease and compare epoch/generation before committing.
+validate protocol responses or enforce stale-writer checks by itself. The coordinator
+holds the shared lease, reloads the envelope, compares the captured epoch, and commits
+with a new epoch and advanced generation after a validated login result.
 Do not hold a lease while waiting for a human to authenticate.
 
 ## Local status model
@@ -101,8 +113,8 @@ The internal evaluator takes `TimeProvider` and the profile expiry margin. A tok
 is Available only when its expiry is strictly beyond now plus the margin. At the
 boundary, a refresh token yields RefreshRequired; otherwise explicit login is
 required. Uncertain and orphaned RefreshInProgress markers report Uncertain without
-exposing or using credentials. This evaluator is tested directly; the facade's
-GetStatusAsync implementation is still pending.
+exposing or using credentials. The facade's GetStatusAsync now uses this evaluator
+under the matching session lock, without protocol or browser interaction.
 
 ## Validation and next feature
 
@@ -112,5 +124,6 @@ credential removal, lock timeout/cancellation, and 100 cooperating in-process mu
 These tests do not establish native persistence, completed refresh coordination,
 protocol conformance, or real-provider compatibility.
 
-The next feature is the internal coordinator and protocol adapters, preserving the
-lazy discovery and internal dependency boundaries in the accepted ADRs.
+The coordinator is now implemented and fake-protocol tested. The next features are
+real protocol adapters and refresh coordination, preserving lazy discovery and the
+internal dependency boundaries in the accepted ADRs.
