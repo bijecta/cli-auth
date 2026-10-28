@@ -1,42 +1,92 @@
-# Keycloak live checks
+# Keycloak browser integration tests
 
-Use [the disposable fixture](../../samples/keycloak/README.md). This directory does
-not currently contain an automated Keycloak test project. Browser protocol tests
-use a synthetic provider and must not be reported as a live-provider run.
+This xUnit/Microsoft.Testing.Platform project uses Testcontainers.Keycloak 4.16.0
+and Microsoft.Playwright 1.64.1. It starts a fresh Keycloak 26.8.1 container and
+headless Chromium, then exercises the public CliAuthenticator API with real
+provider requests, loopback callbacks, signature validation, and memory storage.
+These dependencies belong to this test project only and are not package dependencies
+of Core or the sample CLI.
 
-## User-run smoke test — passed, 2026-10-28
+## Run locally
 
-The user started the fixture and ran the sample on their development machine,
-completed browser authentication, and supplied the terminal output. It reported:
+Use the pinned .NET SDK, PowerShell 7 for Playwright's browser-install script, and
+a running local Docker-compatible Linux-container runtime. From the repository root:
 
-- Login succeeded, with MemoryOnly persistence and the openid grant.
-- Cached access-token acquisition succeeded with the same expiry and grants.
-- Local status was Available.
-- Local logout reported LocalSessionRemoved=true and NotRequested revocation.
+```sh
+dotnet restore Bijecta.CliAuth.IntegrationTests.slnx --locked-mode
+dotnet build Bijecta.CliAuth.IntegrationTests.slnx --configuration Release --no-restore
+pwsh tests/Bijecta.CliAuth.KeycloakTests/bin/Release/net10.0/playwright.ps1 install chromium
+dotnet test --solution Bijecta.CliAuth.IntegrationTests.slnx --configuration Release --no-build
+```
 
-This is a manually reported happy-path result, not an agent-executed or automated
-Keycloak test. The image tag in the fixture is 26.8.1; the running image digest,
-container-runtime version, and browser version were not captured. No tokens,
-credentials, subject identifiers, or full captured provider responses are recorded here.
+On Linux, use `install --with-deps chromium` to install the browser's system dependencies
+as well. CI does this on its Ubuntu runner. See [Playwright's .NET CI guide](https://playwright.dev/dotnet/docs/ci).
 
-The attempt also exposed a sample issuer-option conversion bug, now fixed with
-explicit absolute-URI parsing and safe InvalidConfiguration output. The .NET
-fixture helper's JSON construction was corrected for file-app trimming/AOT checks.
+There is no manual Compose/prepare step for this suite. It creates its own realm,
+public clients, generated credentials, mapped provider ports, and exact callback
+registration. It never reads or changes the developer fixture's `.local/` files.
+The callback port is reserved while the container starts, then released for Core;
+the six tests run serially in one collection to share that registration safely.
 
-The agent session could run the synthetic tests but was denied access to both the
-container socket and TCP connections to the live provider on 127.0.0.1:8080.
-The successful live result came from the user's terminal.
+Testcontainers discovers the runtime and supports `DOCKER_CONTEXT`/`DOCKER_HOST`
+configuration; the tests do not hardcode Docker Desktop, OrbStack, or a host OS.
+Podman or other compatible runtimes may need socket/reaper configuration. Follow
+[Testcontainers runtime configuration](https://dotnet.testcontainers.org/custom_configuration/).
+This development fixture requires container ports reachable on local IPv4 loopback;
+remote Docker hosts are outside its HTTP development policy. Missing runtime or
+browser prerequisites fail the suite instead of silently skipping its assertions.
 
-## Remaining live checks
+## What the six tests prove
 
-Record the date, OS/browser, runtime, exact image digest, and observations for:
+| Test | Assertions |
+|---|---|
+| Login/acquire/status/logout | Validated login, usable cached token, Available status, local removal, subsequent acquisition requires login |
+| Repeat login with SSO | Local logout preserves browser SSO; the second login returns the same subject without submitting credentials again |
+| Accept consent | The public consent client returns exactly the requested openid/profile scopes |
+| Deny consent | Actual Keycloak denial maps to AccessDenied, saves no session, and releases the callback port |
+| Cancel at login form | Cancelling while the real login form is visible saves no session and releases the listener |
+| Occupied callback port | Core fails before calling the browser launcher and leaves storage empty |
 
-- Repeat login, including an existing browser SSO session.
-- A fixed-port collision failing before browser launch.
-- Ctrl+C while waiting closing the listener and exiting 130.
-- Denied authorization creating no session, if the provider exposes a denial UI.
-- Native launchers on the other target operating systems.
+The PlaywrightSystemBrowser implements the existing ISystemBrowser host extension.
+It navigates to Core's authorization URL and interacts with Keycloak's forms. Core
+still handles the real protocol flow; no internal fake adapter is used. Browser
+contexts are isolated per test. The SSO test intentionally keeps its context across
+two logins; separate consent clients prevent accepted grants from affecting denial.
 
-Automated synthetic tests cover callback validation, port collision, cancellation,
-timeouts, token rejection, and session races. They do not establish native desktop
-behavior on every platform or live compatibility with every provider.
+The fixture closes browser contexts, the shared browser/driver, and the container.
+Testcontainers' resource reaper remains enabled as a cleanup backstop. Test and
+startup deadlines bound failures. No traces, screenshots, saved authentication
+state, or raw Playwright call logs are emitted because they can contain credentials
+or authorization/callback URLs. Failures report the browser stage. Container startup
+failures can report bounded startup-only logs with both generated passwords redacted.
+
+## CI and solution separation
+
+The existing Bijecta.CliAuth.slnx continues to run the 199 deterministic tests on
+Windows, Linux, and macOS without container/browser prerequisites. The separate
+Bijecta.CliAuth.IntegrationTests.slnx references the same Core project and this
+integration project. Its dedicated Linux CI job restores locked packages, builds,
+installs Chromium, runs all six tests, and checks formatting.
+
+The extra solution is an execution boundary, not a separate implementation or a
+NuGet package. It keeps heavyweight infrastructure out of the normal test command.
+
+## Recorded validation — 2026-10-28
+
+The integration Release build passed without warnings or errors. All six tests
+passed against a disposable Keycloak container and headless Chromium in the local
+development environment, with zero skips. The hosted Linux CI job has been added
+and still needs its first run. The image tag is pinned; an immutable image digest
+was not recorded.
+
+Separately, the user previously completed the sample's live browser login, cached
+acquisition, Available status, and local logout, and supplied terminal output.
+That manually reported result is distinct from the automated suite above.
+
+## Remaining desktop/process checks
+
+The Playwright launcher replaces the native default-browser launcher. Native
+Windows/Linux/macOS desktop-launch checks remain separate, as does a process-level
+Ctrl+C/exit-130 check for the sample. The cancellation test here exercises the public
+API's cancellation token. Other OIDC providers, native storage, and cross-process
+locking are not established by this suite.

@@ -30,3 +30,25 @@ jobs:
         run: dotnet test --solution Bijecta.CliAuth.slnx --configuration Release --no-build
       - name: Check formatting
         run: dotnet format Bijecta.CliAuth.slnx --verify-no-changes --no-restore
+
+  browser-integration:
+    name: Keycloak browser integration (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/cliauth-playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore locked integration dependencies
+        run: dotnet restore Bijecta.CliAuth.IntegrationTests.slnx --locked-mode
+      - name: Build integration tests
+        run: dotnet build Bijecta.CliAuth.IntegrationTests.slnx --configuration Release --no-restore
+      - name: Install Playwright Chromium and system dependencies
+        run: pwsh tests/Bijecta.CliAuth.KeycloakTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Test against disposable Keycloak
+        run: dotnet test --solution Bijecta.CliAuth.IntegrationTests.slnx --configuration Release --no-build
+      - name: Check integration formatting
+        run: dotnet format Bijecta.CliAuth.IntegrationTests.slnx --verify-no-changes --no-restore

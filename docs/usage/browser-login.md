@@ -3,8 +3,9 @@
 The browser adapter is implemented and exercised with signed synthetic tokens,
 real loopback sockets, and the public constructor's real HTTP transport. The
 [Keycloak fixture](../../samples/keycloak/README.md) passed a user-run live browser
-login/acquire/status/logout smoke test on 2026-10-28. Additional live edge and
-platform checks remain pending. This is a development milestone,
+login/acquire/status/logout smoke test on 2026-10-28. Six automated Testcontainers/
+Playwright tests also passed against disposable Keycloak and Chromium. Native
+launcher/process checks remain pending. This is a development milestone,
 not a release/security-review claim. Device flow, refresh, protected persistence,
 and remote revocation are still deferred.
 
@@ -100,6 +101,7 @@ Coordinator tests continue to cover login/logout races and storage failures.
 
 Synthetic tests establish these behaviors; they do not establish compatibility with
 all providers, native browser launch success, native storage, or cross-process locks.
-Follow and record the [live Keycloak checklist](../../tests/Bijecta.CliAuth.KeycloakTests/README.md)
-before claiming that provider demonstration passed. Additional provider integrations
-may need narrowly scoped metadata/client configuration work.
+See the [Keycloak integration suite](../../tests/Bijecta.CliAuth.KeycloakTests/README.md)
+for its separate run command, prerequisites, six passing scenarios, and remaining
+native launcher/process checks. Additional provider integrations may need narrowly
+scoped metadata/client configuration work.

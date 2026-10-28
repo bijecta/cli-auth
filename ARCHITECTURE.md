@@ -8,8 +8,8 @@ own the command framework, user interaction, and presentation.
 coordination, lazy discovery, browser PKCE, strict loopback reception, and ID-token
 validation are implemented. Browser/protocol tests use signed synthetic tokens and
 real local sockets, including the public constructor's real HTTP backchannel.
-The sample and Keycloak fixture have passed a user-run live browser happy path;
-additional live edge and platform checks remain pending. Device login, refresh, remote revocation, protected
+Six Keycloak/Playwright integration tests and a user-run sample browser happy path
+have passed. Native launcher/process checks remain pending. Device login, refresh, remote revocation, protected
 backends, HTTP, and DI integration remain future work. See the
 [browser walkthrough](docs/usage/browser-login.md). Responsibilities below include
 that planned work.
@@ -130,6 +130,14 @@ and protocol secrets must be excluded from normal diagnostics.
 
 System.CommandLine belongs to the sample CLI, not Core. The Keycloak fixture targets
 the browser milestone; a user-run login/acquire/status/logout smoke test passed.
+A separate integration test solution uses test-only Testcontainers and Playwright
+dependencies to start disposable Keycloak and exercise the public authenticator.
+Its six tests cover login, cached acquisition, local logout, SSO reuse, consent
+acceptance/denial, cancellation, and callback port collision. They passed locally;
+the separate Linux CI job still needs its first hosted run. The three-OS solution
+keeps the deterministic tests free of container/browser prerequisites. The existing
+ISystemBrowser extension supplies the Playwright launcher, so native desktop
+launchers still need separate checks.
 Device demonstration will follow its implementation. Provider support is
 claimed only after testing; an optional single protected API may demonstrate HTTP
 integration. Workers and token exchange are outside scope.
@@ -138,8 +146,10 @@ Current automated checks verify package boundaries plus local configuration,
 isolation, redaction, expiry, process-local memory-store/lock behavior, and coordinator
 composition, login/logout races, and fault handling through fakes. Browser tests also
 exercise signed-token rejection, lazy discovery/cache, PKCE binding, callback abuse,
-concurrency limits, cancellation, deadlines, and bounded transport. Live-provider,
-native-storage, HTTP integration, and cross-process tests remain future work; compiling a backend project does not establish OS support.
+concurrency limits, cancellation, deadlines, and bounded transport. The integration
+suite additionally exercises real Keycloak and Chromium. Native-storage, HTTP
+integration, and cross-process tests remain future work; compiling a backend
+project does not establish OS support.
 
 ## Decision records
 

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Bijecta.CliAuth.Core/Bijecta.CliAuth.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Bijecta.CliAuth.KeycloakTests/Bijecta.CliAuth.KeycloakTests.csproj" />
+  </Folder>
+</Solution>

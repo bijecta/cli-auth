@@ -13,7 +13,9 @@ The version is pinned to `quay.io/keycloak/keycloak:26.8.1`, matching the
 It is a version tag, not a verified immutable digest. A **user-run live browser
 smoke test passed on 2026-10-28**: login, cached acquisition, Available status, and
 local logout. The agent session could not access the provider directly. Additional
-live edge and platform checks remain pending; see the recorded checklist below.
+native launcher/process checks remain pending. A separate Testcontainers/Playwright
+suite has also passed six automated scenarios against its own disposable Keycloak;
+see [integration tests](../../tests/Bijecta.CliAuth.KeycloakTests/README.md).
 
 From the repository root, with the pinned .NET SDK and a configured container
 runtime running. The commands use your Docker CLI's selected context/endpoint;

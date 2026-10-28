@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.mtp-v2" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Playwright" PrivateAssets="all" />
+    <PackageReference Include="Testcontainers.Keycloak" PrivateAssets="all" />
+    <Using Include="Xunit" />
+    <ProjectReference Include="../../src/Bijecta.CliAuth.Core/Bijecta.CliAuth.Core.csproj" />
+    <Content Include="../../samples/keycloak/realm.template.json" Link="Fixtures/realm.template.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
