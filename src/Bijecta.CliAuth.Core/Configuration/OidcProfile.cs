@@ -6,7 +6,8 @@ public sealed class OidcProfile
     /// <summary>Creates a profile without discovery, storage access, or other network I/O.</summary>
     public OidcProfile(string applicationId, string profileName, Uri issuer, string clientId,
         IEnumerable<string>? scopes = null, PersistenceMode persistence = PersistenceMode.Protected,
-        BrowserCallbackOptions? callback = null, bool allowLoopbackHttp = false, TimeSpan? expiryMargin = null)
+        BrowserCallbackOptions? callback = null, bool allowLoopbackHttp = false, TimeSpan? expiryMargin = null,
+        IEnumerable<Uri>? allowedEndpointOrigins = null)
     {
         ApplicationId = ContractValidation.Identifier(applicationId);
         ProfileName = ContractValidation.Identifier(profileName);
@@ -27,6 +28,18 @@ public sealed class OidcProfile
         Persistence = persistence;
         Callback = callback ?? new BrowserCallbackOptions();
         AllowLoopbackHttp = allowLoopbackHttp;
+        var origins = new SortedDictionary<string, Uri>(StringComparer.Ordinal);
+        foreach (var origin in allowedEndpointOrigins ?? [])
+        {
+            ContractValidation.Issuer(origin, allowLoopbackHttp);
+            if (origin.AbsolutePath != "/")
+            {
+                throw new CliAuthException(AuthErrorCode.InvalidConfiguration);
+            }
+            var canonical = origin.GetLeftPart(UriPartial.Authority);
+            origins[canonical] = new Uri(canonical);
+        }
+        AllowedEndpointOrigins = Array.AsReadOnly(origins.Values.ToArray());
     }
 
     /// <summary>The application's non-secret storage namespace.</summary>
@@ -45,6 +58,8 @@ public sealed class OidcProfile
     public BrowserCallbackOptions Callback { get; }
     /// <summary>An explicit development exception for IP-literal loopback HTTP endpoints.</summary>
     public bool AllowLoopbackHttp { get; }
+    /// <summary>Explicit additional trusted origins for discovered endpoints; the issuer origin is implicit.</summary>
+    public IReadOnlyList<Uri> AllowedEndpointOrigins { get; }
     /// <summary>The conservative margin used for cached-token availability.</summary>
     public TimeSpan ExpiryMargin { get; }
 }

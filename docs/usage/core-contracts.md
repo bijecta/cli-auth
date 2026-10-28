@@ -3,13 +3,14 @@
 The initial Core feature implements immutable local configuration, safe contract
 models, session isolation, and a process-local memory store with matching locks.
 It defines `ICliAuthenticator`, now implemented by the local session coordinator
-in `CliAuthenticator`. Real discovery, browser/device transactions, refresh, and DI
-registration are not available yet; see [composition](authenticator-composition.md).
+in `CliAuthenticator`. Browser PKCE and lazy discovery are implemented; device login,
+refresh, and DI registration remain deferred. See [composition](authenticator-composition.md)
+and [browser login](browser-login.md).
 
 The [compiled consumer example](../../samples/Bijecta.CliAuth.Sample.Cli/Examples/CoreUsage.cs)
 shows profile configuration, direct construction, and facade usage. The sample CLI
-does not expose working provider login commands. Browser/device example methods
-show the intended call shape and currently receive UnsupportedCapability.
+exposes a browser `demo` command with explicit memory storage. The device example
+shows the future call shape and currently receives UnsupportedCapability.
 
 ## Configuration and flow selection
 
@@ -36,7 +37,7 @@ storage/locking setup per authenticator. All profiles must match its persistence
 policy; duplicate names are rejected. Per-profile backend selection is deferred.
 This policy is recorded in [ADR 0004](../decisions/0004-authenticator-storage-and-profile-scope.md);
 direct construction and persistence compatibility checks are implemented. Provider
-capability checks remain part of the upcoming real protocol adapters.
+browser capability checks happen lazily when explicit login needs discovery.
 
 Profile construction validates local values without contacting a provider. It
 includes `openid`; `profile` and `offline_access` are opt-in. Scope collections are
@@ -56,7 +57,8 @@ the user code, verification URI, optional complete URI, and expiry, never a devi
 of the application, profile, exact issuer, client, sorted scope set, and callback/
 security policy fingerprint. Scope count is explicit; this avoids ambiguous field
 boundaries. Policy version 1 includes callback settings, loopback HTTP opt-in,
-expiry margin, persistence, and the initial validation policy. Changes to identity
+expiry margin, persistence, explicitly trusted additional endpoint origins, and the
+initial validation policy. Changes to identity
 or policy select another key. Browser and device flow share a profile's key.
 
 `AccessToken.Value` is deliberate sensitive access for HTTP or other protocols.
@@ -124,6 +126,6 @@ credential removal, lock timeout/cancellation, and 100 cooperating in-process mu
 These tests do not establish native persistence, completed refresh coordination,
 protocol conformance, or real-provider compatibility.
 
-The coordinator is now implemented and fake-protocol tested. The next features are
-real protocol adapters and refresh coordination, preserving lazy discovery and the
-internal dependency boundaries in the accepted ADRs.
+The browser adapter is now implemented and synthetic-provider tested. Live Keycloak
+verification, device login, and refresh coordination follow, preserving lazy discovery
+and the internal dependency boundaries in the accepted ADRs.

@@ -4,14 +4,15 @@ Bijecta.CliAuth is a library for developers adding browser and device authentica
 to their own .NET CLIs. Applications configure their own OAuth 2.0/OIDC provider and
 own the command framework, user interaction, and presentation.
 
-**Current state:** package projects, build configuration, a sample CLI shell,
-immutable Core configuration/contracts, process-local memory storage/locks, and a
-concrete authenticator/session coordinator are implemented. Local status, cached-token
-acquisition, and logout work publicly. Login commit/race behavior is verified with
-an internal fake protocol; real provider login, browser launching, refresh, remote
-revocation, protected backends, HTTP, and DI integration remain unavailable.
-Responsibilities below include that planned work; see [Core usage](docs/usage/core-contracts.md)
-and [coordinator usage](docs/usage/authenticator-composition.md) for the delivered boundary.
+**Current state:** immutable Core contracts, memory storage/locks, session
+coordination, lazy discovery, browser PKCE, strict loopback reception, and ID-token
+validation are implemented. Browser/protocol tests use signed synthetic tokens and
+real local sockets, including the public constructor's real HTTP backchannel.
+The sample and Keycloak fixture have passed a user-run live browser happy path;
+additional live edge and platform checks remain pending. Device login, refresh, remote revocation, protected
+backends, HTTP, and DI integration remain future work. See the
+[browser walkthrough](docs/usage/browser-login.md). Responsibilities below include
+that planned work.
 
 ## Package boundaries
 
@@ -56,8 +57,11 @@ These extension points adapt the host application without bypassing required
 protocol validation. Exact API signatures remain subject to implementation review.
 The selected protocol dependencies are Duende.IdentityModel.OidcClient 7.1.1,
 Duende.IdentityModel 8.1.0, and Microsoft IdentityModel components 8.23.0. These
-dependencies are registered in Core; the real adapters and flow implementations remain
-planned work. The coordinator's protocol interface and deterministic test fake stay internal.
+dependencies stay internal to Core. Browser authorization preparation and code
+exchange use Duende helpers; Microsoft validates the mandatory ID token. Core owns
+explicit nonce, discovery policy, deadlines, bounded transport, callback checks,
+conservative expiry, and scope containment. Device flow is deferred. The coordinator's
+protocol interface and deterministic test fake stay internal.
 
 ## Authenticator composition
 
@@ -97,7 +101,8 @@ Both flows will validate the result and commit through the same session coordina
 and selected store. The implemented coordinator captures an epoch under the lock,
 releases it for protocol interaction, then reloads/checks the epoch before an atomic
 commit. Its fake tests verify that logout and a winning login supersede older logins.
-Only explicit login initiates interactive authentication; real flow adapters are pending.
+Only explicit login initiates interactive authentication. Browser login is implemented;
+Device selection currently returns UnsupportedCapability without network or browser work.
 
 ## Sessions, storage, and HTTP
 
@@ -123,16 +128,18 @@ and protocol secrets must be excluded from normal diagnostics.
 
 ## Samples and verification
 
-System.CommandLine belongs to the sample CLI, not Core. The Keycloak fixture is
-planned as the first real demonstration of both login flows. Provider support is
+System.CommandLine belongs to the sample CLI, not Core. The Keycloak fixture targets
+the browser milestone; a user-run login/acquire/status/logout smoke test passed.
+Device demonstration will follow its implementation. Provider support is
 claimed only after testing; an optional single protected API may demonstrate HTTP
 integration. Workers and token exchange are outside scope.
 
 Current automated checks verify package boundaries plus local configuration,
 isolation, redaction, expiry, process-local memory-store/lock behavior, and coordinator
-composition, login/logout races, and fault handling through fakes. Real protocol,
-native-storage, HTTP, and cross-process behavior tests will be added with those
-features; compiling a backend project does not establish OS support.
+composition, login/logout races, and fault handling through fakes. Browser tests also
+exercise signed-token rejection, lazy discovery/cache, PKCE binding, callback abuse,
+concurrency limits, cancellation, deadlines, and bounded transport. Live-provider,
+native-storage, HTTP integration, and cross-process tests remain future work; compiling a backend project does not establish OS support.
 
 ## Decision records
 

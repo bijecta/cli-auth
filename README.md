@@ -3,9 +3,11 @@
 Reusable .NET packages for developers adding browser PKCE and device login to their
 own CLI applications using an OIDC provider such as Keycloak or Okta.
 
-**Status: early development. Core configuration, memory storage, and local session
-coordination are implemented. Real provider login, refresh, protected persistence,
-HTTP integration, and DI registration are not available yet.**
+**Status: early development. Browser PKCE, lazy discovery, ID-token validation,
+memory storage, and session coordination are implemented and synthetic-provider
+tested. A user-run live Keycloak browser smoke test passed; additional live edge
+and platform checks remain pending. Device login, refresh, protected
+persistence, HTTP integration, and DI registration are not available yet.**
 
 ## Packages
 
@@ -44,16 +46,17 @@ Windows, macOS, and Linux; it does not yet validate native storage on those OSes
 See [Core contracts](docs/usage/core-contracts.md), [authenticator composition and
 coordination](docs/usage/authenticator-composition.md), and the
 [compiled consumer example](samples/Bijecta.CliAuth.Sample.Cli/Examples/CoreUsage.cs).
-Local status, usable cached-token acquisition, and logout work through the public
-authenticator. Its login method currently returns UnsupportedCapability; login
-commit/race behavior is tested through an internal fake protocol adapter only.
+Browser login, local status, usable cached-token acquisition, and logout work through
+the public authenticator. See the [browser walkthrough](docs/usage/browser-login.md)
+and [Keycloak development fixture](samples/keycloak/README.md). Device login returns
+UnsupportedCapability without switching flows. The sample uses memory explicitly.
 
 ## Implementation order
 
 1. Core contracts, configuration validation, and memory storage (implemented foundation).
 2. Authenticator composition and session coordination (implemented with fake-protocol tests).
-3. Real protocol adapters using the [accepted dependency selection](docs/decisions/0003-protocol-dependency-selection.md).
-4. Browser PKCE and device login with a Keycloak sample.
+3. Browser PKCE using the [accepted dependencies](docs/decisions/0003-protocol-dependency-selection.md) (implemented; live Keycloak happy path passed).
+4. Remaining live browser checks and device login.
 5. Platform persistence and cross-process session coordination.
 6. Silent refresh, HTTP, and DI integration.
 

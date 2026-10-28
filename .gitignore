@@ -24,3 +24,6 @@ appsettings.Local.json
 
 # Local implementation guidance
 AGENTS.md
+
+# Generated disposable Keycloak fixture credentials
+samples/keycloak/.local/

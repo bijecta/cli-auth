@@ -10,6 +10,7 @@
     <Project Path="src/Bijecta.CliAuth.Storage.Windows/Bijecta.CliAuth.Storage.Windows.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Bijecta.CliAuth.ProtocolTests/Bijecta.CliAuth.ProtocolTests.csproj" />
     <Project Path="tests/Bijecta.CliAuth.UnitTests/Bijecta.CliAuth.UnitTests.csproj" />
   </Folder>
 </Solution>

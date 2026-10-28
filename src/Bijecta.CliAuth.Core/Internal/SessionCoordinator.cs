@@ -60,7 +60,7 @@ internal sealed class SessionCoordinator
         _store = tokenStore;
         _locks = sessionLocks;
         _protocol = protocol;
-        _browser = browser ?? new UnavailableSystemBrowser();
+        _browser = browser ?? new SystemBrowser();
         _time = timeProvider ?? TimeProvider.System;
     }
 

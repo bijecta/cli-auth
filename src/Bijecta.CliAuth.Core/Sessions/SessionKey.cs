@@ -24,13 +24,16 @@ public sealed record SessionKey
     public static SessionKey ForProfile(OidcProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        var policy = Hash([
+        var policyFields = new List<string>
+        {
             "Bijecta.CliAuth.Policy/v1", profile.Callback.Address,
             profile.Callback.Port.ToString(System.Globalization.CultureInfo.InvariantCulture), profile.Callback.Path,
             profile.AllowLoopbackHttp ? "allow-loopback-http" : "https-only",
             profile.ExpiryMargin.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture),
             profile.Persistence.ToString(), "id-token-algorithms:RS256,ES256", "validation-skew-seconds:60"
-        ]);
+        };
+        policyFields.AddRange(profile.AllowedEndpointOrigins.Select(origin => origin.GetLeftPart(UriPartial.Authority)));
+        var policy = Hash(policyFields);
         var fields = new List<string>
         {
             "Bijecta.CliAuth.Session/v1", profile.ApplicationId, profile.ProfileName,

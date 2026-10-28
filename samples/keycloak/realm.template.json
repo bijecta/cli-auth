@@ -1,0 +1,29 @@
+{
+  "realm": "cliauth",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "clients": [
+    {
+      "clientId": "bijecta-cli",
+      "name": "Bijecta development CLI",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false,
+      "redirectUris": ["http://127.0.0.1:43821/callback/"],
+      "webOrigins": [],
+      "defaultClientScopes": ["basic"],
+      "optionalClientScopes": ["profile", "email", "offline_access"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "oauth2.device.authorization.grant.enabled": "false"
+      }
+    }
+  ]
+}
