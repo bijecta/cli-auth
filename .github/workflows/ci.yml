@@ -35,8 +35,6 @@ jobs:
     name: Keycloak browser integration (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/cliauth-playwright
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
