@@ -106,3 +106,12 @@ already works.
   and prompting semantics unclear.
 - Automatically fall back to plaintext: changes the host's selected protection
   policy unexpectedly and conflicts with explicit store composition.
+
+## First implementation slice
+
+The maintainer selected compact JSON and step-by-step implementation.
+`Bijecta.CliAuth.Storage.File` now owns the internal serializer described in the
+[session format](../usage/session-file-format.md). The existing schema/epoch/generation
+fields are retained; migrations, file I/O, atomic replacement, and process locking
+are later slices. Core still contains the contracts and memory store. No public
+file backend or plaintext persistence policy has been exposed yet.

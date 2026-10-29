@@ -7,6 +7,7 @@ public sealed class PackageBoundaryTests
     [Theory]
     [InlineData("Bijecta.CliAuth.Core")]
     [InlineData("Bijecta.CliAuth.Extensions")]
+    [InlineData("Bijecta.CliAuth.Storage.File")]
     [InlineData("Bijecta.CliAuth.Storage.MacOS")]
     [InlineData("Bijecta.CliAuth.Storage.Linux")]
     [InlineData("Bijecta.CliAuth.Storage.Windows")]

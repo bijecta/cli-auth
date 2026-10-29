@@ -21,7 +21,8 @@ storage packages do not depend on one another.
 
 ```mermaid
 flowchart BT
-    MacOS[Storage.MacOS] --> Core[CliAuth.Core]
+    FileStore[Storage.File] --> Core[CliAuth.Core]
+    MacOS[Storage.MacOS] --> Core
     Linux[Storage.Linux] --> Core
     Windows[Storage.Windows] --> Core
     Extensions[CliAuth.Extensions] --> Core
@@ -30,6 +31,7 @@ flowchart BT
 | Package | Responsibility |
 |---|---|
 | `Bijecta.CliAuth.Core` | Configuration, browser/device flow orchestration, internal protocol adapters, session coordination, refresh, public contracts, memory storage |
+| `Bijecta.CliAuth.Storage.File` | Internal compact JSON session format; file backend not yet exposed |
 | `Bijecta.CliAuth.Storage.MacOS` | Future macOS protected storage; mechanism deferred |
 | `Bijecta.CliAuth.Storage.Linux` | Future Linux protected storage; mechanism deferred |
 | `Bijecta.CliAuth.Storage.Windows` | Future Windows protected storage; mechanism deferred |
@@ -37,7 +39,8 @@ flowchart BT
 
 The next storage milestone is an explicitly selected plaintext file backend with
 atomic replacement, cross-process coordination, and durable logout tracking. Its
-package placement and public policy value are not implemented yet.
+package now exists with an internal compact JSON serializer. File I/O and the public
+plaintext policy value are not implemented yet. See [the format](docs/usage/session-file-format.md).
 [ADR 0005](docs/decisions/0005-plaintext-persistence-first.md) defers protected storage
 and reopens the choice between native credential storage and encrypted files.
 
