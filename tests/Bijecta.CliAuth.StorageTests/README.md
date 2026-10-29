@@ -23,3 +23,14 @@ No real credentials or OS credential services are used. Power-loss durability,
 process coordination, full permission/path hardening, and native protection tests
 will be added with their implementation slices. Hosted OS success requires actual
 CI results; it is not inferred from a local run.
+
+## Windows open-reader regression
+
+The initial Windows matrix run failed ExistingReaderRetainsOldFileWhileNewReaderSeesReplacement:
+legacy File.Move replacement rejected the open target despite delete sharing.
+The assertion and strict reader sharing flags are retained; both ordinary and
+Unicode directory cases now exercise Windows POSIX rename publication. Three
+platform-independent buffer tests verify native pointer alignment, UTF-16 byte
+length, replacement/POSIX flags, and ordinary/Unicode/extended path encoding.
+Actual native Windows behavior still requires a hosted Windows rerun; passing the
+buffer tests on macOS is not a Windows integration result.

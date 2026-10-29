@@ -147,3 +147,21 @@ from the full ITokenStore contract. Cross-platform behavioral tests belong to th
 normal solution and therefore run in the existing Ubuntu/Windows/macOS CI matrix.
 Actual hosted passes must be checked after CI runs; local macOS is not evidence
 that Windows/Linux behavior has passed.
+
+## Windows matrix correction
+
+The hosted Windows open-reader test failed with the initial MoveFileEx publication
+path, despite Read | Delete sharing. Keep the old-handle/new-handle assertion and
+sharing requirements. Windows publication now uses a narrow managed native bridge:
+CreateFileW opens the staged file with DELETE access, then SetFileInformationByHandle
+uses FileRenameInfoEx with REPLACE_IF_EXISTS | POSIX_SEMANTICS. Microsoft documents
+that this preserves old handles while later opens reach the replacement. Do not
+fall back to copying, deleting the original, widening reader write-sharing, or a
+legacy replacement API if the filesystem cannot support this operation.
+
+This requires Windows filesystem support for the extended rename; failures remain
+safe StorageUnavailable. Unix publication is unchanged. The File project enables
+unsafe compilation solely for SDK-generated LibraryImport marshalling; no new
+external package is introduced and Core remains unchanged. Preserve the matrix
+regression test, add its Unicode-path case and portable ABI-buffer checks, and
+confirm a hosted Windows rerun before claiming the issue is resolved there.

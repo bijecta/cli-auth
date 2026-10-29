@@ -106,14 +106,18 @@ public sealed class AtomicFileWriteTests
         Assert.Equal([location.SessionPath], Directory.GetFiles(location.Path));
     }
 
-    [Fact]
-    public async Task ExistingReaderRetainsOldFileWhileNewReaderSeesReplacement()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExistingReaderRetainsOldFileWhileNewReaderSeesReplacement(bool unicodeDirectory)
     {
         using var location = new TestDirectory();
-        var store = new FileTokenStore(location.Path);
+        var directory = unicodeDirectory ? System.IO.Path.Combine(location.Path, "session-é-会話") : location.Path;
+        var path = System.IO.Path.Combine(directory, Key.Value + ".json");
+        var store = new FileTokenStore(directory);
         var original = Session("synthetic-original");
         await store.WriteAsync(Key, original, TestContext.Current.CancellationToken);
-        await using var oldHandle = new FileStream(location.SessionPath, FileMode.Open, FileAccess.Read,
+        await using var oldHandle = new FileStream(path, FileMode.Open, FileAccess.Read,
             FileShare.Read | FileShare.Delete, 4096, FileOptions.Asynchronous);
         var replacement = Session("synthetic-new", 2);
         await store.WriteAsync(Key, replacement, TestContext.Current.CancellationToken);

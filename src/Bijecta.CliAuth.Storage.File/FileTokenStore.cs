@@ -124,7 +124,14 @@ public sealed class FileTokenStore
             // Close the handle before publication, including on Windows.
             if (_beforePublish is not null) { await _beforePublish(temporaryPath, ct).ConfigureAwait(false); }
             ct.ThrowIfCancellationRequested();
-            System.IO.File.Move(temporaryPath, SessionPath(key), overwrite: true);
+            if (OperatingSystem.IsWindows())
+            {
+                WindowsFilePublication.Publish(temporaryPath, SessionPath(key));
+            }
+            else
+            {
+                System.IO.File.Move(temporaryPath, SessionPath(key), overwrite: true);
+            }
             published = true;
             // Do not report cancellation after a successful publication as though no commit occurred.
         }

@@ -21,18 +21,24 @@ selection. Each session is stored as compact UTF-8 JSON in `<sessionKey>.json`.
 2. Create the directory on demand and a randomly named `.tmp` file inside it with
    CreateNew. Only this attempt's successfully created temporary file is owned.
 3. Write all bytes, call Flush(flushToDisk: true), and close the temporary handle.
-4. Check cancellation, then call File.Move(temp, destination, overwrite: true).
+4. Check cancellation, then publish with Unix File.Move(overwrite: true) or Windows
+   SetFileInformationByHandle(FileRenameInfoEx, REPLACE_IF_EXISTS | POSIX_SEMANTICS).
 5. Treat successful publication as committed; do not report late cancellation as
    though it undid the write. On failure/cancellation, best-effort remove only the
    owned temporary file without masking the original error.
 
 The old destination is never truncated or deleted first. Readers allow deletion/
-replacement sharing so Windows can replace a file with readers still holding it.
+replacement sharing; Windows publication explicitly requests POSIX rename semantics
+to replace a destination while its old read handles remain open.
 Existing open readers retain the old file; subsequent readers open the replacement.
 The temporary file is in the same directory to keep publication on one filesystem.
-.NET can copy/delete for cross-volume moves, so this design targets stable local
-storage directories, not network shares or arbitrary filesystem/mount changes.
-See [File.Move](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.move)
+Windows uses the native rename API without a copy/delete or legacy replacement
+fallback. It requires a Windows filesystem supporting FileRenameInfoEx with POSIX
+replacement; unsupported operations return StorageUnavailable. Unix File.Move may
+copy/delete across volumes, so the same-directory/stable local-filesystem requirement
+still applies. Network shares and arbitrary mount changes are outside this scope.
+See [Windows rename semantics](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information),
+[File.Move](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.move)
 and the [format/atomicity walkthrough](../../docs/usage/session-file-format.md).
 
 This incremental class still does not implement ITokenStore: matching locks,
@@ -56,7 +62,9 @@ and filesystem failures map to StorageUnavailable without raw paths/inner except
 ## Cross-platform verification
 
 The normal solution includes StorageTests, so the existing Ubuntu/Windows/macOS
-build-and-test matrix runs the same atomicity tests on all three hosted runners.
+build-and-test matrix runs the same atomicity tests on all three hosted runners. The initial Windows run found that legacy
+MoveFileEx replacement failed with an open reader; the native POSIX-rename fix
+requires a new hosted run.
 Tests cover staging visibility, cancellation/failure preservation, cleanup ownership,
 replacement with an open reader, and restrictive Unix replacement modes. An internal
 pre-publication test boundary supports deterministic fault injection without adding

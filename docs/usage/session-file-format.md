@@ -26,19 +26,27 @@ without creating it. The first write creates the directory and writes one
 
 Writes serialize/validate before changing the filesystem. A unique CreateNew
 `.tmp` file is written in the storage directory, flushed with Flush(flushToDisk:
-true), and closed. After the final cancellation check, File.Move with overwrite
-publishes it at the session path. The destination is not truncated/deleted first.
+true), and closed. After the final cancellation check, the platform replacement
+operation publishes it at the session path. The destination is not truncated/deleted first.
 Failures before publication preserve the previous session; best-effort cleanup
 removes only this attempt's temporary file. Successful publication is the commit
 boundary, with no cancellation check that could misreport an already completed write.
 
-This targets stable local directories and same-filesystem replacement. On .NET 10,
-overwrite moves use rename on Unix and MoveFileExW on Windows. Reads use deletion/
-replacement sharing so an already open Windows reader does not prevent publication.
-An existing reader can finish reading the old file while new readers see the new file.
-See the [.NET Unix implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/IO/FileSystem.Unix.cs),
-[Windows implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/Common/src/Interop/Windows/Kernel32/Interop.MoveFileEx.cs),
-and [cross-volume File.Move behavior](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.move).
+This targets stable local directories and same-filesystem replacement. Unix uses
+File.Move(overwrite: true), which calls rename on the same filesystem. Windows now
+opens the staged file with DELETE access and calls SetFileInformationByHandle with
+FileRenameInfoEx and REPLACE_IF_EXISTS | POSIX_SEMANTICS. This explicitly permits
+old open handles to remain valid while subsequent opens see the replacement.
+Reads retain FileShare.Read | FileShare.Delete; write sharing is not enabled.
+
+The original Windows matrix run failed its open-reader test with the legacy
+MoveFileEx publication path. That test is retained and now also covers a Unicode
+directory. Windows requires filesystem support for the extended POSIX rename;
+unsupported operations fail as StorageUnavailable, with no copy/delete, delete-first,
+or legacy replacement fallback. A hosted rerun is needed to validate the correction.
+See [Microsoft's rename flag contract](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information),
+[SetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle),
+and [.NET's Unix implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/IO/FileSystem.Unix.cs).
 
 There are no coordination locks or durable logout operations yet. Complete-file
 publication does not prevent lost updates between competing writers. It also does
