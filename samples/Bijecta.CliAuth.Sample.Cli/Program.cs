@@ -3,12 +3,14 @@ using System.Text.Json;
 using Bijecta.CliAuth.Core;
 
 var root = new RootCommand("Bijecta.CliAuth development sample. Storage is explicitly process-local memory.");
-var demo = new Command("demo", "Browser login, cached token acquisition, status, and local logout in one process.");
+var demo = new Command("demo", "Browser or device login, cached token acquisition, status, and local logout in one process.");
 var issuer = new Option<string>("--issuer") { Required = true, Description = "Exact OIDC issuer." };
 var clientId = new Option<string>("--client-id") { Required = true, Description = "Registered native public client ID." };
 var scopes = new Option<string[]>("--scope") { Description = "Repeat for each requested scope; openid is always included." };
 var port = new Option<int>("--callback-port") { Description = "Registered loopback port; default 0 selects a dynamic port." };
 var allowHttp = new Option<bool>("--allow-loopback-http") { Description = "Allow HTTP for an IP-literal loopback development issuer only." };
+var flow = new Option<string>("--flow") { DefaultValueFactory = _ => "browser", Description = "Login flow: browser or device." };
+demo.Options.Add(flow);
 demo.Options.Add(issuer);
 demo.Options.Add(clientId);
 demo.Options.Add(scopes);
@@ -26,8 +28,23 @@ demo.SetAction(async (parse, cancellationToken) =>
             parse.GetValue(scopes), PersistenceMode.MemoryOnly,
             new BrowserCallbackOptions(parse.GetValue(port)), parse.GetValue(allowHttp));
         var auth = new CliAuthenticator([profile], new MemoryTokenStore());
-        Console.WriteLine("Opening your browser. This session exists only for this process.");
-        var login = await auth.LoginAsync("demo", new LoginOptions(), cancellationToken);
+        var options = parse.GetValue(flow) switch
+        {
+            "browser" => new LoginOptions(),
+            "device" => new LoginOptions(LoginFlow.Device, (prompt, ct) =>
+            {
+                ct.ThrowIfCancellationRequested();
+                Console.WriteLine($"Open {prompt.VerificationUri}");
+                Console.WriteLine($"Enter code: {prompt.UserCode}");
+                Console.WriteLine($"Waiting for authorization (expires {prompt.ExpiresAtUtc:u})...");
+                return Task.CompletedTask;
+            }),
+            _ => throw new CliAuthException(AuthErrorCode.InvalidConfiguration)
+        };
+        Console.WriteLine("This session exists only for this process.");
+        if (options.Flow == LoginFlow.Browser) { Console.WriteLine("Opening your browser."); }
+        var login = await auth.LoginAsync("demo", options, cancellationToken);
+
         Console.WriteLine(JsonSerializer.Serialize(new { action = "login", Persistence = login.Persistence.ToString(), login.ExpiresAtUtc, login.GrantedScopes }));
         var token = await auth.GetAccessTokenAsync("demo", cancellationToken);
         Console.WriteLine(JsonSerializer.Serialize(new { action = "acquire", token.ExpiresAtUtc, token.GrantedScopes }));
@@ -48,9 +65,15 @@ demo.SetAction(async (parse, cancellationToken) =>
         Console.Error.WriteLine(JsonSerializer.Serialize(new { ErrorCode = error.ErrorCode.ToString(), error.ProviderErrorCode, error.Message, error.CorrelationId }));
         return error.ErrorCode switch
         {
-            AuthErrorCode.InvalidConfiguration or AuthErrorCode.UnsupportedCapability => 2,
-            AuthErrorCode.AccessDenied => 3,
-            AuthErrorCode.LoginTimedOut => 4,
+            AuthErrorCode.InvalidConfiguration or AuthErrorCode.UnsupportedCapability or
+                AuthErrorCode.DestinationNotAllowed or AuthErrorCode.InvalidRequest => 2,
+            AuthErrorCode.ReauthenticationRequired or AuthErrorCode.RefreshOutcomeUnknown => 3,
+            AuthErrorCode.AccessDenied or AuthErrorCode.BrowserUnavailable or
+                AuthErrorCode.CallbackRejected or AuthErrorCode.LoginTimedOut => 4,
+            AuthErrorCode.StorageUnavailable or AuthErrorCode.StorageCorrupt or AuthErrorCode.UnsupportedSchema => 5,
+            AuthErrorCode.DiscoveryFailed or AuthErrorCode.NetworkFailure or AuthErrorCode.ProtocolFailure or
+                AuthErrorCode.TokenLifetimeTooShort => 6,
+            AuthErrorCode.SessionBusy or AuthErrorCode.OperationSuperseded => 7,
             _ => 1
         };
     }

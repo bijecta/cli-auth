@@ -3,14 +3,14 @@
 The initial Core feature implements immutable local configuration, safe contract
 models, session isolation, and a process-local memory store with matching locks.
 It defines `ICliAuthenticator`, now implemented by the local session coordinator
-in `CliAuthenticator`. Browser PKCE and lazy discovery are implemented; device login,
-refresh, and DI registration remain deferred. See [composition](authenticator-composition.md)
+in `CliAuthenticator`. Browser PKCE, device login, and lazy discovery are implemented;
+refresh and DI registration remain deferred. See [composition](authenticator-composition.md)
 and [browser login](browser-login.md).
 
 The [compiled consumer example](../../samples/Bijecta.CliAuth.Sample.Cli/Examples/CoreUsage.cs)
 shows profile configuration, direct construction, and facade usage. The sample CLI
-exposes a browser `demo` command with explicit memory storage. The device example
-shows the future call shape and currently receives UnsupportedCapability.
+exposes `demo --flow browser|device` with explicit memory storage. The device example
+uses the implemented host presentation callback; see [device login](device-login.md).
 
 ## Configuration and flow selection
 
@@ -126,6 +126,6 @@ credential removal, lock timeout/cancellation, and 100 cooperating in-process mu
 These tests do not establish native persistence, completed refresh coordination,
 protocol conformance, or real-provider compatibility.
 
-The browser adapter is now implemented and synthetic-provider tested. Live Keycloak
-verification, device login, and refresh coordination follow, preserving lazy discovery
+Both login adapters are implemented with synthetic-provider and Keycloak coverage.
+Protected persistence and refresh coordination follow, preserving lazy discovery
 and the internal dependency boundaries in the accepted ADRs.

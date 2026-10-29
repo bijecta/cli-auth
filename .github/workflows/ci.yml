@@ -32,7 +32,7 @@ jobs:
         run: dotnet format Bijecta.CliAuth.slnx --verify-no-changes --no-restore
 
   browser-integration:
-    name: Keycloak browser integration (Linux)
+    name: Keycloak browser and device integration (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

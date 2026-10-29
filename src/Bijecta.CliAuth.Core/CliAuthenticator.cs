@@ -1,7 +1,7 @@
 namespace Bijecta.CliAuth.Core;
 
 /// <summary>Coordinates named profiles sharing one explicitly selected store and lock domain.</summary>
-/// <remarks>Browser login uses authorization code with PKCE. Device flow, refresh, and remote revocation are deferred.</remarks>
+/// <remarks>Browser login uses authorization code with PKCE. Device login uses host presentation and polling. Refresh and remote revocation are deferred.</remarks>
 public sealed class CliAuthenticator : ICliAuthenticator
 {
     private readonly SessionCoordinator _coordinator;
@@ -16,7 +16,7 @@ public sealed class CliAuthenticator : ICliAuthenticator
     public CliAuthenticator(IEnumerable<OidcProfile> profiles, ITokenStore tokenStore,
         ISessionLockProvider? sessionLocks = null, ISystemBrowser? browser = null,
         TimeProvider? timeProvider = null, TimeSpan? sessionLockTimeout = null)
-        : this(profiles, tokenStore, new BrowserAuthenticationProtocol(timeProvider), sessionLocks,
+        : this(profiles, tokenStore, new AuthenticationProtocol(timeProvider), sessionLocks,
             browser, timeProvider, sessionLockTimeout)
     {
     }

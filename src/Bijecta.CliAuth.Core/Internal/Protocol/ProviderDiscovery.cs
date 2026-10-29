@@ -4,7 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Bijecta.CliAuth.Core;
 
-internal sealed record ProviderMetadata(Uri AuthorizationEndpoint, Uri TokenEndpoint, Uri JwksUri, string Jwks, IReadOnlyList<SecurityKey> Keys);
+internal sealed record ProviderMetadata(Uri? AuthorizationEndpoint, Uri TokenEndpoint, Uri JwksUri, string Jwks, IReadOnlyList<SecurityKey> Keys, Uri? DeviceAuthorizationEndpoint = null);
 internal sealed class ProviderDiscovery(HttpClient http, TimeProvider time)
 {
     private sealed class Entry
@@ -14,10 +14,10 @@ internal sealed class ProviderDiscovery(HttpClient http, TimeProvider time)
         internal long Started;
     }
 
-    private readonly ConcurrentDictionary<SessionKey, Entry> _entries = new();
-    internal async Task<ProviderMetadata> GetAsync(OidcProfile profile, CancellationToken ct)
+    private readonly ConcurrentDictionary<(SessionKey, LoginFlow), Entry> _entries = new();
+    internal async Task<ProviderMetadata> GetAsync(OidcProfile profile, CancellationToken ct, LoginFlow flow = LoginFlow.Browser)
     {
-        var entry = _entries.GetOrAdd(SessionKey.ForProfile(profile), _ => new Entry());
+        var entry = _entries.GetOrAdd((SessionKey.ForProfile(profile), flow), _ => new Entry());
         await entry.Gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
@@ -42,24 +42,28 @@ internal sealed class ProviderDiscovery(HttpClient http, TimeProvider time)
                     throw new CliAuthException(AuthErrorCode.DiscoveryFailed);
                 }
 
-                Supports(root, "response_types_supported", "code", required: true);
-                Supports(root, "grant_types_supported", "authorization_code");
-                Supports(root, "code_challenge_methods_supported", "S256");
-                if (root.TryGetProperty("require_pushed_authorization_requests", out var par) && par.GetBoolean())
+                Uri? authorization = null;
+                Uri? device = null;
+                if (flow == LoginFlow.Browser)
                 {
-                    throw new CliAuthException(AuthErrorCode.UnsupportedCapability);
+                    Supports(root, "response_types_supported", "code", required: true);
+                    Supports(root, "grant_types_supported", "authorization_code");
+                    Supports(root, "code_challenge_methods_supported", "S256");
+                    if (root.TryGetProperty("require_pushed_authorization_requests", out var par) && par.GetBoolean())
+                    {
+                        throw new CliAuthException(AuthErrorCode.UnsupportedCapability);
+                    }
+                    authorization = Endpoint(profile, RequiredCapability(root, "authorization_endpoint"));
                 }
-
-                if (!root.TryGetProperty("authorization_endpoint", out var auth) || auth.ValueKind != JsonValueKind.String ||
-                    string.IsNullOrWhiteSpace(auth.GetString()))
+                else
                 {
-                    throw new CliAuthException(AuthErrorCode.UnsupportedCapability);
+                    Supports(root, "grant_types_supported", "urn:ietf:params:oauth:grant-type:device_code");
+                    device = Endpoint(profile, RequiredCapability(root, "device_authorization_endpoint"));
                 }
-                var authorization = Endpoint(profile, auth.GetString()!);
                 var token = Endpoint(profile, ProtocolJson.Required(root, "token_endpoint"));
                 var jwks = Endpoint(profile, ProtocolJson.Required(root, "jwks_uri"));
                 var keys = await LoadKeysAsync(jwks, ct).ConfigureAwait(false);
-                entry.Metadata = new(authorization, token, jwks, keys.Json, keys.Keys);
+                entry.Metadata = new ProviderMetadata(authorization, token, jwks, keys.Json, keys.Keys, device);
                 entry.Started = start;
                 return entry.Metadata;
             }
@@ -115,19 +119,19 @@ internal sealed class ProviderDiscovery(HttpClient http, TimeProvider time)
             }
 
             if (key.Kty == "RSA" && (string.IsNullOrEmpty(key.Alg) || key.Alg == "RS256") && key.KeySize >= 2048 ||
-                key.Kty == "EC" && key.Crv == "P-256" && (string.IsNullOrEmpty(key.Alg) || key.Alg == "ES256"))
+                key is { Kty: "EC", Crv: "P-256" } && (string.IsNullOrEmpty(key.Alg) || key.Alg == "ES256"))
             {
                 keys.Add(key);
             }
         }
 
-        if (keys.Count == 0)
-        {
-            throw new CliAuthException(AuthErrorCode.DiscoveryFailed);
-        }
-
-        return (text, keys.AsReadOnly());
+        return keys.Count == 0 ? throw new CliAuthException(AuthErrorCode.DiscoveryFailed) : (text, keys.AsReadOnly());
     }
+
+    private static string RequiredCapability(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String &&
+        !string.IsNullOrWhiteSpace(value.GetString()) ? value.GetString()! :
+        throw new CliAuthException(AuthErrorCode.UnsupportedCapability);
 
     private static void Supports(JsonElement root, string name, string value, bool required = false)
     {

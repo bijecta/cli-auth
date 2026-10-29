@@ -2,7 +2,7 @@ using Bijecta.CliAuth.Core;
 
 namespace Bijecta.CliAuth.Sample.Cli.Examples;
 
-// Compiled consumer examples. Browser login is implemented; device login and refresh are deferred.
+// Compiled consumer examples. Browser and device login are implemented; refresh is deferred.
 internal static class CoreUsage
 {
     internal static OidcProfile CreateDevelopmentProfile() => new(

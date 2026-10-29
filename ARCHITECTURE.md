@@ -5,11 +5,11 @@ to their own .NET CLIs. Applications configure their own OAuth 2.0/OIDC provider
 own the command framework, user interaction, and presentation.
 
 **Current state:** immutable Core contracts, memory storage/locks, session
-coordination, lazy discovery, browser PKCE, strict loopback reception, and ID-token
+coordination, lazy discovery, browser PKCE, device polling, strict loopback reception, and ID-token
 validation are implemented. Browser/protocol tests use signed synthetic tokens and
 real local sockets, including the public constructor's real HTTP backchannel.
-Six Keycloak/Playwright integration tests and a user-run sample browser happy path
-have passed. Native launcher/process checks remain pending. Device login, refresh, remote revocation, protected
+Ten Keycloak/Playwright integration tests and a user-run sample browser happy path
+have passed. Native launcher/process checks remain pending. Refresh, remote revocation, protected
 backends, HTTP, and DI integration remain future work. See the
 [browser walkthrough](docs/usage/browser-login.md). Responsibilities below include
 that planned work.
@@ -60,7 +60,8 @@ Duende.IdentityModel 8.1.0, and Microsoft IdentityModel components 8.23.0. These
 dependencies stay internal to Core. Browser authorization preparation and code
 exchange use Duende helpers; Microsoft validates the mandatory ID token. Core owns
 explicit nonce, discovery policy, deadlines, bounded transport, callback checks,
-conservative expiry, and scope containment. Device flow is deferred. The coordinator's
+conservative expiry, and scope containment. Device polling uses Duende endpoint helpers
+and the shared LoginTokenValidator with device-appropriate nonce policy. The coordinator's
 protocol interface and deterministic test fake stay internal.
 
 ## Authenticator composition
@@ -97,12 +98,12 @@ treated as proof of missing support. Flows never switch automatically.
   presentation callback, then polls according to the protocol. The device code
   remains internal; this flow needs no loopback listener or automatic browser launch.
 
-Both flows will validate the result and commit through the same session coordinator
+Both flows validate the result and commit through the same session coordinator
 and selected store. The implemented coordinator captures an epoch under the lock,
 releases it for protocol interaction, then reloads/checks the epoch before an atomic
 commit. Its fake tests verify that logout and a winning login supersede older logins.
-Only explicit login initiates interactive authentication. Browser login is implemented;
-Device selection currently returns UnsupportedCapability without network or browser work.
+Only explicit login initiates interactive authentication. Both flows are implemented;
+missing selected-flow capabilities return UnsupportedCapability without fallback.
 
 ## Sessions, storage, and HTTP
 
@@ -128,17 +129,17 @@ and protocol secrets must be excluded from normal diagnostics.
 
 ## Samples and verification
 
-System.CommandLine belongs to the sample CLI, not Core. The Keycloak fixture targets
-the browser milestone; a user-run login/acquire/status/logout smoke test passed.
+System.CommandLine belongs to the sample CLI, not Core. The Keycloak fixture provides
+browser and device clients; a user-run browser login/acquire/status/logout smoke test passed.
 A separate integration test solution uses test-only Testcontainers and Playwright
 dependencies to start disposable Keycloak and exercise the public authenticator.
-Its six tests cover login, cached acquisition, local logout, SSO reuse, consent
-acceptance/denial, cancellation, and callback port collision. They passed locally;
-the separate Linux CI job still needs its first hosted run. The three-OS solution
+Its ten tests cover browser/device login, cached acquisition, local logout, SSO reuse,
+consent acceptance/denial, cancellation, callback port collision, and disabled device
+grants. They passed locally; the latest hosted Linux CI status is not confirmed. The three-OS solution
 keeps the deterministic tests free of container/browser prerequisites. The existing
 ISystemBrowser extension supplies the Playwright launcher, so native desktop
 launchers still need separate checks.
-Device demonstration will follow its implementation. Provider support is
+The sample accepts `demo --flow device`; see [device login](docs/usage/device-login.md). Provider support is
 claimed only after testing; an optional single protected API may demonstrate HTTP
 integration. Workers and token exchange are outside scope.
 

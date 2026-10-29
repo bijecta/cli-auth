@@ -13,7 +13,7 @@ namespace Bijecta.CliAuth.KeycloakTests;
 [CollectionDefinition(Name, DisableParallelization = true)]
 public sealed class KeycloakCollection : ICollectionFixture<KeycloakFixture>
 {
-    public const string Name = "Keycloak browser integration";
+    public const string Name = "Keycloak integration";
 }
 
 // A fresh imported realm and browser per test collection. No developer fixture or credentials are used.
@@ -23,6 +23,9 @@ public sealed class KeycloakFixture : IAsyncLifetime
     internal const string ClientId = "bijecta-cli";
     internal const string AcceptClientId = "consent-accept";
     internal const string DenyClientId = "consent-deny";
+    internal const string DeviceClientId = "device-accept";
+    internal const string DeviceDenyClientId = "device-deny";
+    internal const string NoDeviceClientId = "no-device";
     internal const string UserName = "integration-user";
     private KeycloakContainer? _container;
     private readonly string _adminPassword = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(24));
@@ -105,22 +108,35 @@ public sealed class KeycloakFixture : IAsyncLifetime
             consentClient["optionalClientScopes"] = new JsonArray(JsonValue.Create("profile"));
             realm["clients"]!.AsArray().Add((JsonNode)consentClient);
         }
-        realm["users"] = new JsonArray(new JsonObject
+        foreach (var id in new[] { DeviceClientId, DeviceDenyClientId, NoDeviceClientId })
         {
-            ["username"] = UserName,
-            ["enabled"] = true,
-            ["emailVerified"] = true,
-            ["firstName"] = "Integration",
-            ["lastName"] = "User",
-            ["email"] = "integration@example.test",
-            ["requiredActions"] = new JsonArray(),
-            ["credentials"] = new JsonArray(new JsonObject
-            {
-                ["type"] = "password",
-                ["value"] = Password,
-                ["temporary"] = false
-            })
-        });
+            var deviceClient = client.DeepClone().AsObject();
+            deviceClient["clientId"] = id;
+            deviceClient["consentRequired"] = true;
+            deviceClient["standardFlowEnabled"] = false;
+            // Keycloak 26.8.1 applies the client PKCE mandate to device authorization too.
+            // These dedicated device clients use RFC 8628 without the provider's PKCE extension.
+            deviceClient["attributes"]!.AsObject().Remove("pkce.code.challenge.method");
+            deviceClient["attributes"]!["oauth2.device.authorization.grant.enabled"] = id == NoDeviceClientId ? "false" : "true";
+            realm["clients"]!.AsArray().Add((JsonNode)deviceClient);
+        }
+        realm["users"] =
+ new JsonArray(new JsonObject
+ {
+     ["username"] = UserName,
+     ["enabled"] = true,
+     ["emailVerified"] = true,
+     ["firstName"] = "Integration",
+     ["lastName"] = "User",
+     ["email"] = "integration@example.test",
+     ["requiredActions"] = new JsonArray(),
+     ["credentials"] = new JsonArray(new JsonObject
+     {
+         ["type"] = "password",
+         ["value"] = Password,
+         ["temporary"] = false
+     })
+ });
         return realm;
     }
 

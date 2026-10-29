@@ -12,11 +12,11 @@ internal static class ProtocolHttp
         PooledConnectionLifetime = TimeSpan.FromMinutes(5)
     });
 
-    internal static HttpClient Create(TimeProvider time, HttpMessageHandler? transport = null) => new(new BoundedHandler(time, transport is null ? Transport : new HttpMessageInvoker(transport, false)))
+    internal static HttpClient Create(TimeProvider time, HttpMessageHandler? transport = null, bool distinguishTimeouts = false) => new(new BoundedHandler(time, distinguishTimeouts, transport is null ? Transport : new HttpMessageInvoker(transport, false)))
     {
         Timeout = Timeout.InfiniteTimeSpan
     };
-    private sealed class BoundedHandler(TimeProvider time, HttpMessageInvoker transport) : HttpMessageHandler
+    private sealed class BoundedHandler(TimeProvider time, bool distinguishTimeouts, HttpMessageInvoker transport) : HttpMessageHandler
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
@@ -55,6 +55,7 @@ internal static class ProtocolHttp
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
+                if (distinguishTimeouts) { throw new ProtocolRequestTimeoutException(); }
                 throw new CliAuthException(AuthErrorCode.NetworkFailure);
             }
             catch (HttpRequestException)
@@ -115,3 +116,6 @@ internal static class ProtocolJson
         !string.IsNullOrWhiteSpace(value.GetString()) ? value.GetString()! :
         throw new CliAuthException(AuthErrorCode.ProtocolFailure);
 }
+
+// Internal signal for device polling backoff; contains no transport details.
+internal sealed class ProtocolRequestTimeoutException : Exception;

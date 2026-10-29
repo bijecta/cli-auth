@@ -6,8 +6,8 @@ real loopback sockets, and the public constructor's real HTTP transport. The
 login/acquire/status/logout smoke test on 2026-10-28. Six automated Testcontainers/
 Playwright tests also passed against disposable Keycloak and Chromium. Native
 launcher/process checks remain pending. This is a development milestone,
-not a release/security-review claim. Device flow, refresh, protected persistence,
-and remote revocation are still deferred.
+not a release/security-review claim. Device login is also implemented; see [the device walkthrough](device-login.md).
+Refresh, protected persistence, and remote revocation are still deferred.
 
 ## Host usage
 

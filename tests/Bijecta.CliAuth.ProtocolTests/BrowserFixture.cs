@@ -5,7 +5,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Bijecta.CliAuth.Core;
-using Microsoft.Extensions.Time.Testing;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Bijecta.CliAuth.ProtocolTests;
@@ -14,25 +13,29 @@ internal sealed class BrowserFixture : HttpMessageHandler, ISystemBrowser
 {
     internal const string Issuer = "https://issuer.example.test/realm";
     internal const string ClientId = "test-cli";
-    internal readonly FakeTimeProvider Time = new(new DateTimeOffset(2031, 1, 1, 0, 0, 0, TimeSpan.Zero));
+    internal readonly DeviceTestClock Time = new(new DateTimeOffset(2031, 1, 1, 0, 0, 0, TimeSpan.Zero));
     private readonly RSA _rsa = RSA.Create(2048);
     private readonly RSA _rotated = RSA.Create(2048);
     private readonly ECDsa _ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
     internal readonly MemoryTokenStore Store = new();
     internal Dictionary<string, string>? Front;
     internal Dictionary<string, string>? Exchange;
-    internal int MetadataCalls, KeyCalls, TokenCalls, BrowserCalls;
+    internal int MetadataCalls, KeyCalls, TokenCalls, BrowserCalls, DeviceCalls;
+    internal bool Device;
+    internal Dictionary<string, string>? DeviceRequest;
+    internal Func<Dictionary<string, object>, Dictionary<string, object>>? ChangeDevice;
     internal Func<Dictionary<string, object>, Dictionary<string, object>>? ChangeMetadata;
     internal Func<Dictionary<string, object>, Dictionary<string, object>>? ChangeTokens;
     internal Func<Uri, CancellationToken, Task>? OnBrowser;
     internal Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>>? Override;
     internal Func<object, object>? ChangeJwks;
     internal Func<CancellationToken, Task<HttpResponseMessage>>? OnTokenRequest;
+    internal Func<CancellationToken, Task<HttpResponseMessage>>? OnDeviceRequest;
     internal string Scenario = "valid";
     internal Uri? LastCallback;
     internal OidcProfile Profile(int port = 0, IEnumerable<Uri>? origins = null) => new("protocol-tests", "work", new Uri(Issuer), ClientId, ["profile"], PersistenceMode.MemoryOnly, new BrowserCallbackOptions(port), allowedEndpointOrigins: origins);
     internal BrowserAuthenticationProtocol Protocol() => new(Time, this);
-    internal CliAuthenticator Auth(BrowserAuthenticationProtocol? protocol = null, OidcProfile? profile = null) => new([profile ?? Profile()], Store, protocol ?? Protocol(), browser: this, timeProvider: Time);
+    internal CliAuthenticator Auth(IAuthenticationProtocol? protocol = null, OidcProfile? profile = null) => new([profile ?? Profile()], Store, protocol ?? Protocol(), browser: this, timeProvider: Time);
     public async Task OpenAsync(Uri uri, CancellationToken cancellationToken = default)
     {
         BrowserCalls++;
@@ -83,7 +86,13 @@ internal sealed class BrowserFixture : HttpMessageHandler, ISystemBrowser
                     "S256"
                 }
             };
+            if (Device)
+            {
+                metadata["device_authorization_endpoint"] = Issuer + "/device";
+                metadata["grant_types_supported"] = new[] { "authorization_code", "urn:ietf:params:oauth:grant-type:device_code" };
+            }
             return Json(ChangeMetadata?.Invoke(metadata) ?? metadata);
+
         }
 
         if (uri.EndsWith("/keys", StringComparison.Ordinal))
@@ -102,11 +111,28 @@ internal sealed class BrowserFixture : HttpMessageHandler, ISystemBrowser
             return Json(ChangeJwks?.Invoke(keyDocument) ?? keyDocument);
         }
 
+        if (uri.EndsWith("/device", StringComparison.Ordinal))
+        {
+            DeviceCalls++;
+            DeviceRequest = Query(await request.Content!.ReadAsStringAsync(ct));
+            if (OnDeviceRequest is not null) { return await OnDeviceRequest(ct); }
+            var device = new Dictionary<string, object>
+            {
+                ["device_code"] = "secret-device-code",
+                ["user_code"] = "USER-CODE",
+                ["verification_uri"] = Issuer + "/verify",
+                ["verification_uri_complete"] = Issuer + "/verify?user_code=USER-CODE",
+                ["expires_in"] = 600
+            };
+            return Json(ChangeDevice?.Invoke(device) ?? device);
+        }
+
         if (uri.EndsWith("/token", StringComparison.Ordinal))
+
         {
             TokenCalls++;
-            if (OnTokenRequest is not null) { return await OnTokenRequest(ct); }
             Exchange = Query(await request.Content!.ReadAsStringAsync(ct));
+            if (OnTokenRequest is not null) { return await OnTokenRequest(ct); }
             var token = new Dictionary<string, object>
             {
                 ["access_token"] = "synthetic-access",
@@ -129,7 +155,7 @@ internal sealed class BrowserFixture : HttpMessageHandler, ISystemBrowser
             claims.Add(new Claim("sub", "test-subject"));
         }
 
-        if (Scenario != "missing_nonce")
+        if (Scenario != "missing_nonce" && Exchange?.GetValueOrDefault("grant_type") != "urn:ietf:params:oauth:grant-type:device_code")
         {
             claims.Add(new Claim("nonce", Scenario == "wrong_nonce" ? "wrong" : Front!["nonce"]));
         }

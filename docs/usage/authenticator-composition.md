@@ -4,8 +4,8 @@ The coordinator is implemented. It connects named profiles, the chosen store and
 locks, the clock, and an internal protocol boundary. Public local status, cached-token
 acquisition, and local logout work. Browser login now uses the real internal adapter;
 see [the walkthrough](browser-login.md). Login commit/race and revocation orchestration
-are also tested with an internal fake. Device login, refresh, and remote revocation
-remain deferred.
+are also tested with an internal fake. Device login uses the same coordinator;
+see [device login](device-login.md). Refresh and remote revocation remain deferred.
 
 ## Direct construction
 
@@ -84,8 +84,8 @@ Cancellation before commit preserves existing state, including when an adapter
 returns a result after ignoring cancellation. Unknown protocol exceptions are
 converted to safe ProtocolFailure errors without response bodies or inner exceptions.
 
-The default public adapter implements browser PKCE and lazy discovery. Device selection
-returns UnsupportedCapability without falling back to browser login. No public protocol
+The default public adapter dispatches browser PKCE or device login with lazy discovery.
+A missing selected-flow capability returns UnsupportedCapability without fallback. No public protocol
 override or third-party protocol types are exposed. Coordinator tests inject a fake
 through an internal constructor; applications cannot configure it as a public extension.
 

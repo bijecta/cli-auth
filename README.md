@@ -3,11 +3,11 @@
 Reusable .NET packages for developers adding browser PKCE and device login to their
 own CLI applications using an OIDC provider such as Keycloak or Okta.
 
-**Status: early development. Browser PKCE, lazy discovery, ID-token validation,
-memory storage, and session coordination are implemented and synthetic-provider
-tested. Six Testcontainers/Playwright Keycloak integration tests and a user-run
-browser smoke test passed. Native launcher/process checks remain pending. Device login, refresh, protected
-persistence, HTTP integration, and DI registration are not available yet.**
+**Status: early development. Browser PKCE and device login, lazy discovery,
+ID-token validation, memory storage, and session coordination are implemented.
+Deterministic protocol tests and Keycloak integration coverage exercise both flows.
+Native launcher/process checks, refresh, protected persistence, HTTP integration,
+and DI registration remain unfinished.**
 
 ## Packages
 
@@ -51,17 +51,18 @@ The fixture helper is managed .NET code, with Native AOT disabled.
 See [Core contracts](docs/usage/core-contracts.md), [authenticator composition and
 coordination](docs/usage/authenticator-composition.md), and the
 [compiled consumer example](samples/Bijecta.CliAuth.Sample.Cli/Examples/CoreUsage.cs).
-Browser login, local status, usable cached-token acquisition, and logout work through
+Browser/device login, local status, usable cached-token acquisition, and logout work through
 the public authenticator. See the [browser walkthrough](docs/usage/browser-login.md)
-and [Keycloak development fixture](samples/keycloak/README.md). Device login returns
-UnsupportedCapability without switching flows. The sample uses memory explicitly.
+and [device walkthrough](docs/usage/device-login.md), plus the
+[Keycloak development fixture](samples/keycloak/README.md). Missing selected provider
+capabilities fail explicitly without switching flows. The sample uses memory explicitly.
 
 ## Implementation order
 
 1. Core contracts, configuration validation, and memory storage (implemented foundation).
 2. Authenticator composition and session coordination (implemented with fake-protocol tests).
 3. Browser PKCE using the [accepted dependencies](docs/decisions/0003-protocol-dependency-selection.md) (implemented; live Keycloak happy path passed).
-4. Keycloak browser automation (implemented; six integration tests passed), remaining native launcher checks, and device login.
+4. Device login and Keycloak automation (implemented), remaining native launcher/process checks.
 5. Platform persistence and cross-process session coordination.
 6. Silent refresh, HTTP, and DI integration.
 

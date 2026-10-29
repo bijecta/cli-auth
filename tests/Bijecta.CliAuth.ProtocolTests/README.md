@@ -1,6 +1,6 @@
 # Protocol tests
 
-Executable xUnit/Microsoft.Testing.Platform tests for the browser milestone. Run
+Executable xUnit/Microsoft.Testing.Platform tests for browser and device login. Run
 with the solution test command in the root README.
 
 Tests use disposable synthetic RSA/EC keys, a fake provider backchannel, real
@@ -11,6 +11,8 @@ connection limits, cancellation, and safe errors. The public-constructor test al
 uses the default real HTTP transport against a local synthetic provider.
 
 No real credentials, captured provider tokens, native browser launch, or running
-Keycloak are involved. Device tests will arrive with the device implementation.
+Keycloak are involved. Device tests use fake-time timer signals to verify presentation,
+pending/slow-down/timeout backoff, expiry, cancellation, safe failure, identity validation,
+and epoch-checked commits without opening a browser or callback listener.
 See [live Keycloak checks](../Bijecta.CliAuth.KeycloakTests/README.md) for the separately
 reported user-run smoke test and pending checks; do not infer live results from these tests.

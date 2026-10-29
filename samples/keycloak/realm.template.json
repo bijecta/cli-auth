@@ -24,6 +24,25 @@
         "pkce.code.challenge.method": "S256",
         "oauth2.device.authorization.grant.enabled": "false"
       }
+    },
+    {
+      "clientId": "bijecta-cli-device",
+      "name": "Bijecta development device CLI",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "defaultClientScopes": ["basic"],
+      "optionalClientScopes": ["profile", "email", "offline_access"],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "true"
+      }
     }
   ]
 }

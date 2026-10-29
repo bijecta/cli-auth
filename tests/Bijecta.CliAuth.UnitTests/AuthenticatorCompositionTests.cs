@@ -73,7 +73,7 @@ public sealed class AuthenticatorCompositionTests
     }
 
     [Fact]
-    public async Task PublicInstanceHasLocalOperationsAndDeviceRemainsUnsupported()
+    public async Task PublicInstanceHasLocalOperationsWithoutNetwork()
     {
         var ct = TestContext.Current.CancellationToken;
         var memory = new MemoryTokenStore();
@@ -81,8 +81,6 @@ public sealed class AuthenticatorCompositionTests
         Assert.Equal(SessionStatusKind.None, (await auth.GetStatusAsync("work", ct)).Kind);
         var missing = await Assert.ThrowsAsync<CliAuthException>(() => auth.GetAccessTokenAsync("work", ct));
         Assert.Equal(AuthErrorCode.ReauthenticationRequired, missing.ErrorCode);
-        var unsupported = await Assert.ThrowsAsync<CliAuthException>(() => auth.LoginAsync("work", new LoginOptions(LoginFlow.Device, (_, _) => Task.CompletedTask), ct));
-        Assert.Equal(AuthErrorCode.UnsupportedCapability, unsupported.ErrorCode);
         Assert.True((await auth.LogoutAsync("work", new LogoutOptions(), ct)).LocalSessionRemoved);
     }
 

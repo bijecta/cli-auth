@@ -1,9 +1,10 @@
-# Local Keycloak browser fixture
+# Local Keycloak browser and device fixture
 
 A disposable public client with S256 required, no client secret, no password grant,
-and the single exact redirect `http://127.0.0.1:43821/callback/`. The sample selects
+and the single exact browser redirect `http://127.0.0.1:43821/callback/`. The sample selects
 MemoryOnly explicitly. Its session disappears when the CLI exits; no persistence,
-refresh, device login, or remote logout is demonstrated yet.
+refresh or remote logout is demonstrated yet. A separate `bijecta-cli-device` public
+client enables device login with browser authorization disabled.
 
 The .NET file-based helper explicitly disables Native AOT. It runs using the
 installed SDK/runtime and needs no platform-specific native compiler packages.
@@ -30,6 +31,22 @@ dotnet run --project samples/Bijecta.CliAuth.Sample.Cli -- demo \
   --issuer http://127.0.0.1:8080/realms/cliauth \
   --client-id bijecta-cli --callback-port 43821 --allow-loopback-http
 ```
+
+For device login, run this instead:
+
+```sh
+dotnet run --project samples/Bijecta.CliAuth.Sample.Cli -- demo --flow device \
+  --issuer http://127.0.0.1:8080/realms/cliauth \
+  --client-id bijecta-cli-device --allow-loopback-http
+```
+
+Open the displayed verification URI and enter the user code. Core does not open a
+browser automatically. The browser client retains mandatory S256. Keycloak 26.8.1
+also applies a client PKCE mandate to device requests, so the dedicated device
+client uses standard device authorization without that provider extension. See
+[device behavior and implementation](../../docs/usage/device-login.md).
+Recreate an existing imported realm to pick up the additional client; preparing
+new files alone does not update an existing realm.
 
 Enter the generated `learner` credentials in the browser. The command should show
 login metadata, cached-token acquisition, Available status, and successful local

@@ -1,4 +1,4 @@
-# Keycloak browser integration tests
+# Keycloak browser and device integration tests
 
 This xUnit/Microsoft.Testing.Platform project uses Testcontainers.Keycloak 4.16.0
 and Microsoft.Playwright 1.64.1. It starts a fresh Keycloak 26.8.1 container and
@@ -26,7 +26,7 @@ There is no manual Compose/prepare step for this suite. It creates its own realm
 public clients, generated credentials, mapped provider ports, and exact callback
 registration. It never reads or changes the developer fixture's `.local/` files.
 The callback port is reserved while the container starts, then released for Core;
-the six tests run serially in one collection to share that registration safely.
+the tests run serially in one collection to share that registration safely.
 
 Testcontainers discovers the runtime and supports `DOCKER_CONTEXT`/`DOCKER_HOST`
 configuration; the tests do not hardcode Docker Desktop, OrbStack, or a host OS.
@@ -36,7 +36,7 @@ This development fixture requires container ports reachable on local IPv4 loopba
 remote Docker hosts are outside its HTTP development policy. Missing runtime or
 browser prerequisites fail the suite instead of silently skipping its assertions.
 
-## What the six tests prove
+## What the tests prove
 
 | Test | Assertions |
 |---|---|
@@ -46,6 +46,23 @@ browser prerequisites fail the suite instead of silently skipping its assertions
 | Deny consent | Actual Keycloak denial maps to AccessDenied, saves no session, and releases the callback port |
 | Cancel at login form | Cancelling while the real login form is visible saves no session and releases the listener |
 | Occupied callback port | Core fails before calling the browser launcher and leaves storage empty |
+
+The four device scenarios additionally cover:
+
+| Test | Assertions |
+|---|---|
+| Device lifecycle with occupied callback port | Host callback completes real verification, signed tokens validate, cached acquisition/status/logout work, no browser-launch extension or loopback listener is used |
+| Device denial | Actual provider denial maps to AccessDenied and saves no session |
+| Cancel after device authorization | Real codes are obtained and presented; caller cancellation leaves no session |
+| Disabled client grant | Endpoint rejection occurs before presentation with no browser fallback |
+
+Device verification uses a browser owned by the test's presentation callback,
+separate from Core's browser-launch extension (which throws if called). Dedicated
+accept/deny clients isolate consent state. The device clients disable browser
+authorization and omit the client PKCE mandate; the browser clients retain S256.
+Keycloak 26.8.1 applies its PKCE mandate to device requests too, so this fixture
+uses separate registrations for standard device flow. See the
+[device walkthrough](../../docs/usage/device-login.md).
 
 The PlaywrightSystemBrowser implements the existing ISystemBrowser host extension.
 It navigates to Core's authorization URL and interacts with Keycloak's forms. Core
@@ -62,14 +79,22 @@ failures can report bounded startup-only logs with both generated passwords reda
 
 ## CI and solution separation
 
-The existing Bijecta.CliAuth.slnx continues to run the 199 deterministic tests on
+The existing Bijecta.CliAuth.slnx continues to run the deterministic tests on
 Windows, Linux, and macOS without container/browser prerequisites. The separate
 Bijecta.CliAuth.IntegrationTests.slnx references the same Core project and this
 integration project. Its dedicated Linux CI job restores locked packages, builds,
-installs Chromium, runs all six tests, and checks formatting.
+installs Chromium, runs all ten tests, and checks formatting.
 
 The extra solution is an execution boundary, not a separate implementation or a
 NuGet package. It keeps heavyweight infrastructure out of the normal test command.
+
+## Device validation — 2026-10-29
+
+The final complete integration run passed all ten browser/device tests against
+disposable Keycloak 26.8.1 and headless Chromium, with zero skips. Both solution
+Release builds and locked restores passed. The deterministic suite has 258
+passing tests, including 59 new device scenarios. This is local evidence; the
+latest hosted CI result is not confirmed.
 
 ## Recorded validation — 2026-10-28
 
