@@ -115,3 +115,35 @@ The maintainer selected compact JSON and step-by-step implementation.
 fields are retained; migrations, file I/O, atomic replacement, and process locking
 are later slices. Core still contains the contracts and memory store. No public
 file backend or plaintext persistence policy has been exposed yet.
+
+## Basic disk read/write slice
+
+The maintainer next requested `FileTokenStore(storageDirectory)` with only reads
+and direct writes. The host supplies an absolute directory; construction performs
+no I/O, missing reads create nothing, and writes create the directory on demand.
+Each session uses `<sessionKey>.json`. Writes are explicitly non-atomic and may
+leave partial data on interruption. No locking or durable logout is added in this
+slice. New Unix files/directories request owner-only modes; existing permissions,
+Windows ACL hardening, and symlink/ownership checks remain later work.
+
+The standalone class does not yet implement ITokenStore, preserving that existing
+contract's stronger atomicity/logout guarantees until the corresponding steps are
+implemented. Core's persistence enum/default and authenticator integration are
+unchanged. See [file usage and limits](../usage/session-file-format.md).
+
+## Atomic replacement slice
+
+After discussing OS replacement operations and atomic visibility versus durability,
+the maintainer requested atomic writes only, with coordination deferred. FileTokenStore
+now stages complete bytes in a unique CreateNew file beside the destination, flushes
+the file to disk, closes it, and publishes with File.Move(overwrite: true). Readers
+allow deletion/replacement sharing for Windows. Failed/cancelled attempts clean up
+only their owned temporary files; a successful publication is the commit boundary.
+
+This targets stable local same-filesystem replacement, not a universal guarantee
+for every filesystem or physical power failure. Directory synchronization, orphan
+recovery, locks, and durable logout remain deferred. The class is still separate
+from the full ITokenStore contract. Cross-platform behavioral tests belong to the
+normal solution and therefore run in the existing Ubuntu/Windows/macOS CI matrix.
+Actual hosted passes must be checked after CI runs; local macOS is not evidence
+that Windows/Linux behavior has passed.

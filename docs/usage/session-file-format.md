@@ -5,11 +5,55 @@ The first storage slice implements `StoredSession` to/from compact UTF-8 JSON in
 this package owns file-format details. `CliAuthenticator` will continue to accept
 an `ITokenStore` supplied by the host.
 
-The serializer is internal. No public file store or file I/O is implemented in this
-step, so it cannot yet be injected into the authenticator. Atomic replacement,
-filesystem permissions/path handling, process locks, and durable logout operations
-follow separately. The existing Core storage interface already requires atomic
-access and matching coordination; this slice does not weaken that contract.
+The serializer is internal; the public `FileTokenStore` now uses it for disk reads and staged replacement writes. The class is intentionally not yet an `ITokenStore`, so
+it cannot be injected into the authenticator. Matching locks,
+and durable logout operations follow separately. The existing Core storage
+contract remains unchanged.
+
+## Disk usage
+
+```csharp
+var store = new FileTokenStore(storageDirectory);
+await store.WriteAsync(sessionKey, session, cancellationToken);
+var restored = await store.ReadAsync(sessionKey, cancellationToken);
+```
+
+`storageDirectory` must be absolute and is chosen by the host application, which
+may supply its per-user default or read a user override. Construction validates and
+normalizes the path without I/O. Reads return null for a missing file/directory,
+without creating it. The first write creates the directory and writes one
+`<sessionKey>.json` file. A new store instance using that directory can read it.
+
+Writes serialize/validate before changing the filesystem. A unique CreateNew
+`.tmp` file is written in the storage directory, flushed with Flush(flushToDisk:
+true), and closed. After the final cancellation check, File.Move with overwrite
+publishes it at the session path. The destination is not truncated/deleted first.
+Failures before publication preserve the previous session; best-effort cleanup
+removes only this attempt's temporary file. Successful publication is the commit
+boundary, with no cancellation check that could misreport an already completed write.
+
+This targets stable local directories and same-filesystem replacement. On .NET 10,
+overwrite moves use rename on Unix and MoveFileExW on Windows. Reads use deletion/
+replacement sharing so an already open Windows reader does not prevent publication.
+An existing reader can finish reading the old file while new readers see the new file.
+See the [.NET Unix implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/IO/FileSystem.Unix.cs),
+[Windows implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/Common/src/Interop/Windows/Kernel32/Interop.MoveFileEx.cs),
+and [cross-volume File.Move behavior](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.move).
+
+There are no coordination locks or durable logout operations yet. Complete-file
+publication does not prevent lost updates between competing writers. It also does
+not establish universal power-loss durability: parent-directory synchronization
+and filesystem-specific recovery are outside this slice. A killed process or
+failed cleanup can leave an orphaned private temporary file; reads ignore it.
+No automatic orphan promotion or deletion policy is implemented.
+
+Filesystem failures return StorageUnavailable without raw paths or inner exceptions.
+An explicit write does not inspect previous content for corruption. New Unix
+directories/staged files request owner-only modes (0700/0600), and replacement keeps
+the staged file's mode. Existing directory permissions are unchanged, Windows ACLs
+are inherited, and ownership/symlink/custom-ACL hardening remains later work.
+The Core persistence enum/default and sample behavior are unchanged; the standalone
+class is not yet injectable into CliAuthenticator.
 
 ## Contents
 
@@ -35,8 +79,8 @@ A compact example using disposable synthetic values:
 There is no indentation, byte-order mark, or trailing newline in the serialized
 bytes. The existing Core schema version, generation, epoch, and lifecycle fields
 are preserved now; migration/version-negotiation machinery is not part of this step.
-The planned layout is one `<sessionKey>.json` per session in a host-supplied storage
-directory. Directory selection and actual path handling are not implemented yet.
+The layout is one `<sessionKey>.json` per session in the host-supplied absolute
+storage directory; the backend derives filenames internally.
 
 Credential-free states (None, ReauthenticationRequired, Uncertain) contain only the
 first five metadata fields. Active and RefreshInProgress include credentials and
@@ -66,6 +110,10 @@ The serializer neither repairs nor rewrites corrupt data.
 
 Storage tests cover full-session round trips, exact issuer/credential preservation,
 compact output, credential-free states, diagnostic redaction, key binding, schema
-rejection, invalid/duplicate fields, expiry handling, and size bounds. They exercise
-serialization in memory using synthetic credentials. They do not establish file
-permissions, durable writes, process safety, encryption, or a usable persistent store.
+rejection, invalid/duplicate fields, expiry handling, and size bounds. Serializer tests use in-memory bytes; file-store tests additionally use disposable
+temporary directories with synthetic credentials. They cover creation, missing reads,
+readback through another instance, replacement, isolation, cancellation, corrupt/large
+files, safe I/O errors, and new Unix modes. Atomic-write tests additionally verify staging visibility, original-session preservation
+on cancellation/failure, temporary-file cleanup ownership, and old/new reader handles.
+They run in the existing Ubuntu/Windows/macOS matrix. Full power-loss durability,
+coordination, permission/path hardening, and encryption remain outside these tests.

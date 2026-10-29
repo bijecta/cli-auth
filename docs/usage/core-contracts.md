@@ -34,8 +34,9 @@ construction rejects profiles with a different policy.
 
 [ADR 0005](../decisions/0005-plaintext-persistence-first.md) accepts a future, explicitly
 selected plaintext file backend. A distinct plaintext policy must be added before
-that backend can be used. The current enum/default remains unchanged; no file backend
-is implemented yet, and plaintext must never masquerade as Protected.
+that backend can be used. The current enum/default remains unchanged; the basic standalone FileTokenStore
+now reads/writes files but does not yet implement ITokenStore. Plaintext must never
+masquerade as Protected. See [file storage](session-file-format.md).
 
 The agreed composition model supports multiple named profiles with one shared
 storage/locking setup per authenticator. All profiles must match its persistence

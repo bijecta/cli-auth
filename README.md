@@ -14,7 +14,7 @@ and DI registration remain unfinished.**
 | Package | Intended responsibility |
 |---|---|
 | Bijecta.CliAuth.Core | Authentication, flow adapters, contracts, session coordination, memory storage |
-| Bijecta.CliAuth.Storage.File | Compact JSON session format; file I/O and coordination pending |
+| Bijecta.CliAuth.Storage.File | Compact JSON and staged replacement; coordination/logout pending |
 | Bijecta.CliAuth.Storage.MacOS | Future macOS protected storage; design deferred |
 | Bijecta.CliAuth.Storage.Linux | Future Linux protected storage; design deferred |
 | Bijecta.CliAuth.Storage.Windows | Future Windows protected storage; design deferred |
@@ -64,13 +64,14 @@ capabilities fail explicitly without switching flows. The sample uses memory exp
 2. Authenticator composition and session coordination (implemented with fake-protocol tests).
 3. Browser PKCE using the [accepted dependencies](docs/decisions/0003-protocol-dependency-selection.md) (implemented; live Keycloak happy path passed).
 4. Device login and Keycloak automation (implemented), remaining native launcher/process checks.
-5. Explicit plaintext file persistence: [compact JSON format](docs/usage/session-file-format.md) implemented; file I/O, atomic writes, and cross-process session coordination pending ([ADR 0005](docs/decisions/0005-plaintext-persistence-first.md)).
+5. Explicit plaintext file persistence: [compact JSON and basic read/write](docs/usage/session-file-format.md) implemented; staged replacement implemented; cross-process coordination and authenticator integration pending ([ADR 0005](docs/decisions/0005-plaintext-persistence-first.md)).
 6. Silent refresh, HTTP, and DI integration.
 7. Protected storage after a separate decision on native services, encryption, and key lifecycle.
 
 Both login flows are part of the first usable preview. That preview may use explicitly
 selected plaintext persistence; protected storage is deferred. The plaintext backend
-is planned and does not work in the current memory-only implementation. Workers, client credentials,
+is being implemented incrementally; basic file reads/writes work, while the sample
+and full authenticator backend remain memory-only. Workers, client credentials,
 and token exchange are outside scope. Dependency review, final license/author and
 repository metadata, security reporting setup, native backend tests, and release
 validation remain outstanding. Scaffold packages are not release artifacts.
