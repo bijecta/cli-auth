@@ -32,6 +32,11 @@ protected backends will be implemented in later features. The store declares its
 policy through the read-only ITokenStore.PersistenceMode property, and authenticator
 construction rejects profiles with a different policy.
 
+[ADR 0005](../decisions/0005-plaintext-persistence-first.md) accepts a future, explicitly
+selected plaintext file backend. A distinct plaintext policy must be added before
+that backend can be used. The current enum/default remains unchanged; no file backend
+is implemented yet, and plaintext must never masquerade as Protected.
+
 The agreed composition model supports multiple named profiles with one shared
 storage/locking setup per authenticator. All profiles must match its persistence
 policy; duplicate names are rejected. Per-profile backend selection is deferred.
@@ -127,5 +132,5 @@ These tests do not establish native persistence, completed refresh coordination,
 protocol conformance, or real-provider compatibility.
 
 Both login adapters are implemented with synthetic-provider and Keycloak coverage.
-Protected persistence and refresh coordination follow, preserving lazy discovery
+Plaintext persistence and refresh coordination follow, preserving lazy discovery
 and the internal dependency boundaries in the accepted ADRs.

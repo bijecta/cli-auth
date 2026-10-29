@@ -9,7 +9,7 @@ coordination, lazy discovery, browser PKCE, device polling, strict loopback rece
 validation are implemented. Browser/protocol tests use signed synthetic tokens and
 real local sockets, including the public constructor's real HTTP backchannel.
 Ten Keycloak/Playwright integration tests and a user-run sample browser happy path
-have passed. Native launcher/process checks remain pending. Refresh, remote revocation, protected
+have passed. Native launcher/process checks remain pending. Refresh, remote revocation, persistent
 backends, HTTP, and DI integration remain future work. See the
 [browser walkthrough](docs/usage/browser-login.md). Responsibilities below include
 that planned work.
@@ -30,10 +30,16 @@ flowchart BT
 | Package | Responsibility |
 |---|---|
 | `Bijecta.CliAuth.Core` | Configuration, browser/device flow orchestration, internal protocol adapters, session coordination, refresh, public contracts, memory storage |
-| `Bijecta.CliAuth.Storage.MacOS` | Keychain-backed protected persistence |
-| `Bijecta.CliAuth.Storage.Linux` | Secret-Service-backed protected persistence |
-| `Bijecta.CliAuth.Storage.Windows` | DPAPI-backed protected persistence |
+| `Bijecta.CliAuth.Storage.MacOS` | Future macOS protected storage; mechanism deferred |
+| `Bijecta.CliAuth.Storage.Linux` | Future Linux protected storage; mechanism deferred |
+| `Bijecta.CliAuth.Storage.Windows` | Future Windows protected storage; mechanism deferred |
 | `Bijecta.CliAuth.Extensions` | Optional DI registration and authenticated HTTP integration |
+
+The next storage milestone is an explicitly selected plaintext file backend with
+atomic replacement, cross-process coordination, and durable logout tracking. Its
+package placement and public policy value are not implemented yet.
+[ADR 0005](docs/decisions/0005-plaintext-persistence-first.md) defers protected storage
+and reopens the choice between native credential storage and encrypted files.
 
 The application explicitly selects a storage implementation. Core and Extensions
 neither reference nor automatically select platform storage packages. A macOS-only
@@ -110,10 +116,12 @@ missing selected-flow capabilities return UnsupportedCapability without fallback
 The session coordinator owns silent cached-token acquisition, expiry decisions,
 and login/logout concurrency. Refresh coordination is the next lifecycle feature;
 a refresh-required acquisition currently returns UnsupportedCapability without
-clearing the session or starting interaction. Protected stores must support atomic updates and
+clearing the session or starting interaction. Persistent stores must support atomic updates and
 coordination between cooperating local processes. Memory storage is explicitly
-selected and process-local. A protected-store failure returns an actionable error;
-it never silently falls back to plaintext.
+selected and process-local. Plaintext persistence must be deliberately selected;
+it is never a fallback from a failed protected store. Restrictive permissions do
+not provide at-rest encryption. Protection, key lifecycle, and optional platform
+user verification remain later design decisions.
 
 Status and ordinary local logout require no provider communication. A usable cached
 token can be returned without discovery. Refresh and explicitly requested remote
@@ -161,3 +169,4 @@ record the reasons and tradeoffs behind individual decisions:
 - [0002: Initialize provider capabilities lazily](docs/decisions/0002-lazy-initialization-and-flow-capabilities.md)
 - [0003: Protocol dependency selection](docs/decisions/0003-protocol-dependency-selection.md), supported by [runnable spikes](spikes/README.md)
 - [0004: Authenticator storage and profile scope](docs/decisions/0004-authenticator-storage-and-profile-scope.md)
+- [0005: Plaintext persistence first](docs/decisions/0005-plaintext-persistence-first.md)

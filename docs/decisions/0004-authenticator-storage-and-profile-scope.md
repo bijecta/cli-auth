@@ -65,3 +65,9 @@ persistence mismatch, and coordinated access when multiple instances share a sto
 The initial coordinator implements direct construction, local operations, and
 fake-protocol-tested login commits. Real provider adapters and DI registration are
 separate follow-up features.
+
+## Related subsequent decision
+
+[ADR 0005](0005-plaintext-persistence-first.md) adds an explicitly selected plaintext
+persistence policy to the implementation plan and defers protected backends. The
+one-store/matching-lock-domain and persistence compatibility rules above still apply.

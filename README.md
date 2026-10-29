@@ -6,7 +6,7 @@ own CLI applications using an OIDC provider such as Keycloak or Okta.
 **Status: early development. Browser PKCE and device login, lazy discovery,
 ID-token validation, memory storage, and session coordination are implemented.
 Deterministic protocol tests and Keycloak integration coverage exercise both flows.
-Native launcher/process checks, refresh, protected persistence, HTTP integration,
+Native launcher/process checks, refresh, file persistence, protected storage, HTTP integration,
 and DI registration remain unfinished.**
 
 ## Packages
@@ -14,9 +14,9 @@ and DI registration remain unfinished.**
 | Package | Intended responsibility |
 |---|---|
 | Bijecta.CliAuth.Core | Authentication, flow adapters, contracts, session coordination, memory storage |
-| Bijecta.CliAuth.Storage.MacOS | Keychain-backed protected persistence |
-| Bijecta.CliAuth.Storage.Linux | Secret-Service-backed protected persistence |
-| Bijecta.CliAuth.Storage.Windows | DPAPI-backed protected persistence |
+| Bijecta.CliAuth.Storage.MacOS | Future macOS protected storage; design deferred |
+| Bijecta.CliAuth.Storage.Linux | Future Linux protected storage; design deferred |
+| Bijecta.CliAuth.Storage.Windows | Future Windows protected storage; design deferred |
 | Bijecta.CliAuth.Extensions | Optional HTTP and DI integration |
 
 Each storage package references Core only; Core and Extensions do not select or
@@ -63,10 +63,13 @@ capabilities fail explicitly without switching flows. The sample uses memory exp
 2. Authenticator composition and session coordination (implemented with fake-protocol tests).
 3. Browser PKCE using the [accepted dependencies](docs/decisions/0003-protocol-dependency-selection.md) (implemented; live Keycloak happy path passed).
 4. Device login and Keycloak automation (implemented), remaining native launcher/process checks.
-5. Platform persistence and cross-process session coordination.
+5. Explicit plaintext file persistence, atomic writes, and cross-process session coordination ([ADR 0005](docs/decisions/0005-plaintext-persistence-first.md)).
 6. Silent refresh, HTTP, and DI integration.
+7. Protected storage after a separate decision on native services, encryption, and key lifecycle.
 
-Both login flows are part of the first usable preview. Workers, client credentials,
+Both login flows are part of the first usable preview. That preview may use explicitly
+selected plaintext persistence; protected storage is deferred. The plaintext backend
+is planned and does not work in the current memory-only implementation. Workers, client credentials,
 and token exchange are outside scope. Dependency review, final license/author and
 repository metadata, security reporting setup, native backend tests, and release
 validation remain outstanding. Scaffold packages are not release artifacts.
