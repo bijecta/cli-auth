@@ -16,15 +16,13 @@ Last updated: 2026-10-30.
   over ADR 0005's tombstones. ADR 0007 records it; per-session epochs fence work
   that started from an existing session, and a login started while signed out is
   deliberately not fenced.
-- Step 3 implementation on branch `feat/storage-logout-deletion`: Core's
+- Step 3 (`c69b08a`, PR #1, hosted matrix green in runs 41143565907/41143591372): Core's
   `DeleteAsync` contract and `MemoryTokenStore` remove records;
   `FileTokenStore.DeleteAsync` deletes `<sessionKey>.json` without parsing it, then
   this key's orphaned staging files best effort; lock files are retained.
 - Verification checkpoint: Release build zero warnings/errors; 358 solution tests
   passed on macOS; format verification and git diff --check passed.
-- Next action: obtain hosted matrix results for the step 3 PR (watch Windows for
-  delete-with-open-reader followed by an immediate write), then merge with the
-  maintainer's approval and start step 4 (plaintext persistence mode and
+- Next action: merge PR #1 with the maintainer's approval, then start step 4 (plaintext persistence mode and
   `ITokenStore` integration) with a design discussion first.
 - Deferred limits: network shares are unsupported; automatic filesystem detection,
   symlink/descriptor checks, and ownership hardening remain step 5. Lease-required
@@ -79,7 +77,7 @@ hosted runners. Atomic writes alone do not prevent lost
 updates: the caller/coordinator must hold the matching lease across compound work.
 Do not add nested automatic acquisition to store methods.
 
-### 3. Logout by record removal — implementation in progress
+### 3. Logout by record removal — complete
 
 Revised by [ADR 0007](decisions/0007-logout-deletes-session-records.md): logout
 deletes the record instead of writing a tombstone; per-session epochs fence stale work.
@@ -91,9 +89,11 @@ deletes the record instead of writing a tombstone; per-session epochs fence stal
 - [x] Remove this key's orphaned staging files best effort after the record is gone.
 - [x] Test removal, missing/repeated logout, unreadable records, orphan scoping,
   cancellation, sanitized failures, open readers, and login superseded by logout.
-- [ ] Confirm the logout suite on the Ubuntu/Windows/macOS hosted matrix.
+- [x] Confirm the logout suite on the Ubuntu/Windows/macOS hosted matrix.
 
-Evidence: In progress, hosted matrix pending. Release build passed with zero
+Evidence: `c69b08a` (PR #1); hosted runs 41143565907 (push) and 41143591372
+(pull request) passed on Ubuntu, Windows, and macOS, including deletion with an open
+reader on Windows, plus the Linux Keycloak integration job. Release build passed with zero
 warnings/errors; all 358 solution tests passed on macOS. Coordinator tests now
 assert that logout supersedes a login started while signed in and that a login
 started while signed out commits (the accepted ADR 0007 trade-off). Parent SPECS,
