@@ -91,9 +91,12 @@ through an internal constructor; applications cannot configure it as a public ex
 
 ## Logout and revocation
 
-Ordinary local logout deletes credentials and advances the tombstone without first
-reading/decrypting credentials. Explicit logout can therefore reset corrupt data
-when the backend can still write its non-secret removal marker.
+Ordinary local logout removes the session record without first reading/decrypting
+credentials. Explicit logout can therefore remove corrupt or unsupported-schema data;
+no other operation repairs or replaces it. Every committed session has a fresh epoch,
+so a login that started from an existing session and finishes after logout is
+superseded. A login started while signed out is not fenced and commits its fresh
+credentials ([ADR 0007](../decisions/0007-logout-deletes-session-records.md)).
 
 When revocation is requested, copy the refresh token under the lease if readable,
 then commit local deletion and release the lease before remote work. A requested

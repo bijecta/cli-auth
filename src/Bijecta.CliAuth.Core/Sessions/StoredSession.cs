@@ -72,13 +72,4 @@ public sealed class StoredSession
     public string? Subject { get; }
     /// <summary>Formats without tokens or account metadata.</summary>
     public override string ToString() => $"StoredSession ({State}, redacted)";
-
-    internal static StoredSession Removed(StoredSession? previous)
-    {
-        if (previous?.Generation == long.MaxValue)
-        {
-            throw new CliAuthException(AuthErrorCode.StorageCorrupt);
-        }
-        return new StoredSession(previous is null ? 0 : previous.Generation + 1, Guid.NewGuid(), SessionLifecycleState.None);
-    }
 }

@@ -3,13 +3,13 @@ using Bijecta.CliAuth.Core;
 
 namespace Bijecta.CliAuth.Storage.File;
 
-/// <summary>Plaintext session-file reads, staged replacement writes, and matching local session leases.</summary>
+/// <summary>Plaintext session-file reads, staged replacement writes, record removal, and matching local session leases.</summary>
 /// <remarks>
-/// This incremental implementation does not yet implement ITokenStore: durable logout and persistence
-/// policy integration remain later steps. Callers hold a matching lease across compound operations.
+/// This incremental implementation does not yet implement ITokenStore: persistence policy integration
+/// remains a later step. Callers hold a matching lease across compound operations.
 /// Replacement and locking target supported stable local filesystems, without full power-loss durability.
 /// </remarks>
-[DebuggerDisplay("FileTokenStore (plaintext, read/write only)")]
+[DebuggerDisplay("FileTokenStore (plaintext)")]
 public sealed class FileTokenStore : ISessionLockProvider
 {
     private const UnixFileMode DirectoryMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
@@ -159,8 +159,60 @@ public sealed class FileTokenStore : ISessionLockProvider
         }
     }
 
+    /// <summary>Removes one session record without reading it, then this key's orphaned staging files.</summary>
+    /// <remarks>
+    /// Missing records succeed without creating anything. Unreadable records are removed too. Removal of the
+    /// record is the commit boundary; orphan cleanup afterwards is best effort. The lock file is retained.
+    /// </remarks>
+    public ValueTask DeleteAsync(SessionKey key, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(key);
+        try
+        {
+            System.IO.File.Delete(SessionPath(key));
+        }
+        catch (DirectoryNotFoundException) { return ValueTask.CompletedTask; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            throw new CliAuthException(AuthErrorCode.StorageUnavailable);
+        }
+        // Logout is committed. Do not report cancellation or cleanup failure as though it were not.
+        DeleteOrphanedStagingFiles(key);
+        return ValueTask.CompletedTask;
+    }
+
+    // Interrupted writes can leave credential-bearing staging files. Under the lease protocol no
+    // cooperating writer is staging this key; an uncoordinated writer's open file is simply skipped.
+    private void DeleteOrphanedStagingFiles(SessionKey key)
+    {
+        try
+        {
+            foreach (var path in Directory.EnumerateFiles(StorageDirectory, $".{key.Value}.*.tmp"))
+            {
+                if (!IsStagingFileName(Path.GetFileName(path), key)) { continue; }
+                try { System.IO.File.Delete(path); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+    }
+
+    // Exactly ".<sessionKey>.<32 lowercase hex>.tmp", as produced by WriteAsync.
+    internal static bool IsStagingFileName(string name, SessionKey key)
+    {
+        var prefix = "." + key.Value + ".";
+        const string Suffix = ".tmp";
+        if (name.Length != prefix.Length + 32 + Suffix.Length ||
+            !name.StartsWith(prefix, StringComparison.Ordinal) || !name.EndsWith(Suffix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+        return name.AsSpan(prefix.Length, 32).IndexOfAnyExcept("0123456789abcdef") < 0;
+    }
+
     private string SessionPath(SessionKey key) => Path.Combine(StorageDirectory, key.Value + ".json");
 
     /// <summary>Formats without exposing the storage path or session contents.</summary>
-    public override string ToString() => "FileTokenStore (plaintext, read/write only)";
+    public override string ToString() => "FileTokenStore (plaintext)";
 }
