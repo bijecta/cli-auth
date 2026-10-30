@@ -254,10 +254,15 @@ public sealed class DeviceFlowTests
     }
 
     [Fact(Timeout = 15_000)]
-    public async Task LogoutDuringPresentationSupersedesLaterDeviceSuccess()
+    public async Task LogoutWhileSignedInDuringPresentationSupersedesLaterDeviceSuccess()
     {
         using var f = new BrowserFixture { Device = true };
         var auth = Auth(f);
+        // ADR 0007: the existing session's epoch fences the login; a login started signed out is not fenced.
+        var profile = f.Profile();
+        await f.Store.WriteAsync(SessionKey.ForProfile(profile), new StoredSession(0, Guid.NewGuid(), SessionLifecycleState.Active,
+            new AccessToken("synthetic-cached-access", f.Time.GetUtcNow().AddHours(1), profile.Scopes), "synthetic-refresh",
+            profile.Issuer, profile.ClientId, "synthetic-cached-subject"), TestContext.Current.CancellationToken);
         var login = auth.LoginAsync("work", Options(async (_, ct) => await auth.LogoutAsync("work", new LogoutOptions(), ct)), TestContext.Current.CancellationToken);
         await f.Time.AdvanceDelayAsync(5, TestContext.Current.CancellationToken);
         Assert.Equal(AuthErrorCode.OperationSuperseded, (await Assert.ThrowsAsync<CliAuthException>(() => login)).ErrorCode);

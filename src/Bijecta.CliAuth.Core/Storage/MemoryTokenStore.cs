@@ -36,7 +36,7 @@ public sealed class MemoryTokenStore : ITokenStore, ISessionLockProvider
     {
         ct.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(key);
-        _sessions.AddOrUpdate(key, _ => StoredSession.Removed(null), (_, previous) => StoredSession.Removed(previous));
+        _sessions.TryRemove(key, out _);
         return ValueTask.CompletedTask;
     }
 

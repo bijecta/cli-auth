@@ -8,46 +8,24 @@ Architecture decisions belong in ADRs; this file records implementation status.
 
 Last updated: 2026-10-30.
 
-- Current implementation commit: `bff76ee` (cross-platform session leases),
-  fast-forward merged to main with the maintainer's approval.
-- ADR 0006 is Accepted by the maintainer (2026-10-30). The implementation,
-  review follow-up, and documentation are on main; no packages are published.
-  Parent design documents stay outside Git.
-- Windows atomic writes: user confirmed working after the correction.
-- Step 2 implementation: FileTokenStore now implements ISessionLockProvider using
-  retained per-key lock files, exclusive Windows handles, and Unix FileShare.None
-  followed by explicit nonblocking flock on the same SafeFileHandle. Fixed per-OS
-  imports avoid an assembly-wide resolver. There is no extra in-process gate.
-- The provider uses one TimeProvider-based deadline, cancellable delays with jitter,
-  exact contention error codes, and idempotent disposal. Store read/write methods
-  remain caller-coordinated; durable logout and ITokenStore integration are later.
-- Review follow-up (2026-10-30): test harness hardened after review. Probes
-  expecting ACQUIRED now wait 5 s (SessionBusy probes stay at 150 ms) to absorb
-  transient Windows antivirus/indexer contention; the helper starts through
-  DOTNET_HOST_PATH when set; the helper is copied from its resolved project output
-  (OutputItemType) including subfolders; a new test proves a non-contention open
-  failure (lock path is a directory) returns sanitized StorageUnavailable without retry.
-- Verification checkpoint: Release solution build passed with zero warnings/errors.
-  Full macOS solution tests passed: 344 total, no failures or skips (85 storage
-  tests, including 24 lock cases); the storage suite also passed 4 repeated runs.
-  A Debug build of the test project alone also copies the helper. Real subprocess
-  tests cover disabled-implicit-locking in both directions, kill recovery,
-  non-inheritance, and concurrent disposal; controlled-time tests cover
-  retry/cancellation/handoff.
-- Formatting/review: full solution `dotnet format --verify-no-changes --no-restore`
-  (the CI command) and git diff --check passed locally.
-- Hosted run 41133464541 (first push): ubuntu-latest and macos-latest passed;
-  windows-latest failed 1 of 344 tests. SpawnedChildDoesNotInheritParentsUnrelatedLease
-  left its child to be killed by disposal, and deleting the test directory then hit a
-  sharing violation on the child's lock file: Windows can report a killed process
-  as exited before its handles close. The provider was not at fault. Fix: the test
-  now releases the child through the stdin protocol, and test-directory cleanup
-  retries for up to ~2 s on IOException/UnauthorizedAccessException.
-- Hosted run 41135383924 on `bff76ee`: ubuntu-latest, windows-latest, macos-latest,
-  and the Linux Keycloak integration job all passed. Step 2 is complete.
-- Next action: discuss step 3's durable logout/tombstone behavior with the
-  maintainer before implementation. Merge to main only after the
-  matrix passes and the maintainer approves.
+- Main includes step 2 (cross-platform session leases, `bff76ee`, hosted matrix
+  run 41135383924 green on Ubuntu/Windows/macOS). Main is protected: changes land
+  through PRs with all CI checks green. Parent design documents stay outside Git.
+- Step 3 decision: after reflection and comparison with other CLIs (gh, Claude
+  Code, Codex, AWS, gcloud, Azure), the maintainer chose logout by record removal
+  over ADR 0005's tombstones. ADR 0007 records it; per-session epochs fence work
+  that started from an existing session, and a login started while signed out is
+  deliberately not fenced.
+- Step 3 implementation on branch `feat/storage-logout-deletion`: Core's
+  `DeleteAsync` contract and `MemoryTokenStore` remove records;
+  `FileTokenStore.DeleteAsync` deletes `<sessionKey>.json` without parsing it, then
+  this key's orphaned staging files best effort; lock files are retained.
+- Verification checkpoint: Release build zero warnings/errors; 358 solution tests
+  passed on macOS; format verification and git diff --check passed.
+- Next action: obtain hosted matrix results for the step 3 PR (watch Windows for
+  delete-with-open-reader followed by an immediate write), then merge with the
+  maintainer's approval and start step 4 (plaintext persistence mode and
+  `ITokenStore` integration) with a design discussion first.
 - Deferred limits: network shares are unsupported; automatic filesystem detection,
   symlink/descriptor checks, and ownership hardening remain step 5. Lease-required
   mutation APIs remain a step-4 contract question. Initial Linux import targets glibc.
@@ -101,16 +79,25 @@ hosted runners. Atomic writes alone do not prevent lost
 updates: the caller/coordinator must hold the matching lease across compound work.
 Do not add nested automatic acquisition to store methods.
 
-### 3. Durable logout and retained metadata
+### 3. Logout by record removal — implementation in progress
 
-- [ ] Add `DeleteAsync` under the matching caller-held lock.
-- [ ] Atomically publish a credential-free tombstone rather than unlinking history.
-- [ ] Advance retained epoch/generation metadata, including for a missing session,
-  consistently with the Core contract and `StoredSession.Removed` semantics.
-- [ ] Preserve corruption/schema errors instead of silently overwriting bad data.
-- [ ] Test repeated logout, missing sessions, reopen, and stale-login/refresh rejection.
+Revised by [ADR 0007](decisions/0007-logout-deletes-session-records.md): logout
+deletes the record instead of writing a tombstone; per-session epochs fence stale work.
 
-Evidence: not started. The tombstone fences work that began before logout.
+- [x] Record the decision in ADR 0007 and supersede ADR 0005's tombstone item.
+- [x] Make Core's `DeleteAsync` contract and `MemoryTokenStore` remove the record.
+- [x] Add `FileTokenStore.DeleteAsync` under the caller-held lock, without parsing the record.
+- [x] Remove unreadable records only through explicit logout; reads never repair them.
+- [x] Remove this key's orphaned staging files best effort after the record is gone.
+- [x] Test removal, missing/repeated logout, unreadable records, orphan scoping,
+  cancellation, sanitized failures, open readers, and login superseded by logout.
+- [ ] Confirm the logout suite on the Ubuntu/Windows/macOS hosted matrix.
+
+Evidence: In progress, hosted matrix pending. Release build passed with zero
+warnings/errors; all 358 solution tests passed on macOS. Coordinator tests now
+assert that logout supersedes a login started while signed in and that a login
+started while signed out commits (the accepted ADR 0007 trade-off). Parent SPECS,
+ARCHITECTURE, and IMPLEMENTATION_PLAN were updated to match.
 
 ### 4. Complete the storage contract and authentication integration
 

@@ -37,6 +37,10 @@ bounded and cleanup runs even if the test token expires. Child environments set
 DOTNET_SYSTEM_IO_DISABLEFILELOCKING before startup; both parent-held/child-waiting
 and child-held/parent-waiting cases exercise explicit Unix locking.
 
+Logout tests verify record removal across instances, missing/repeated logout,
+removal of unreadable records, this-key-only orphan cleanup, cancellation,
+sanitized failures, and removal with an open reader followed by a new write.
+
 No real credentials or OS credential services are used. Power-loss durability,
 full permission/path hardening, and native protection tests
 will be added with their implementation slices. Hosted OS success requires actual

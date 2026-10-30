@@ -3,7 +3,7 @@ namespace Bijecta.CliAuth.Core;
 /// <summary>Persisted session lifecycle states, separate from time-dependent local status.</summary>
 public enum SessionLifecycleState
 {
-    /// <summary>A credential-free removal tombstone retaining mutation identity.</summary>
+    /// <summary>A credential-free marker meaning no session; logout removes records rather than writing this.</summary>
     None,
     /// <summary>A validated session whose token may be usable or require refresh.</summary>
     Active,

@@ -102,11 +102,11 @@ independently; a timeout returns SessionBusy and never discards a live gate.
 Gates remain stable for the instance lifetime. No cross-process coordination or
 persistence is claimed by this backend.
 
-Deleting a key clears credentials and retains a None tombstone with a fresh epoch
-and advanced generation, including when the key was previously absent. Read returns
-that marker so an in-flight login can detect deletion; it returns null only for a
-key never stored or removed in this instance. Local status treats the marker as None.
-Repeated deletion advances the marker again. Unknown schemas are rejected before
+Deleting a key removes its record; Read then returns null. Deleting a missing key,
+or deleting repeatedly, succeeds without creating a record. In-flight logins detect
+deletion because the epoch they captured from an existing session is gone
+([ADR 0007](../decisions/0007-logout-deletes-session-records.md)). A stored record
+with the credential-free None state still reads as no session. Unknown schemas are rejected before
 an envelope is accepted. Credential-free lifecycle markers cannot carry tokens.
 
 The store is an advanced extension contract, not an authenticator: it does not

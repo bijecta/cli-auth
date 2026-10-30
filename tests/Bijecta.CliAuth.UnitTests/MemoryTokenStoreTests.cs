@@ -21,7 +21,7 @@ public sealed class MemoryTokenStoreTests
     }
 
     [Fact]
-    public async Task DeleteClearsCredentialsAndRetainsAnAdvancedEpochAndGeneration()
+    public async Task DeleteRemovesTheRecordAndRepeatedDeleteIsANoOp()
     {
         var ct = TestContext.Current.CancellationToken;
         var store = new MemoryTokenStore();
@@ -30,29 +30,19 @@ public sealed class MemoryTokenStoreTests
         await using var lease = await store.AcquireAsync(key, TimeSpan.FromSeconds(1), ct);
         await store.WriteAsync(key, session, ct);
         await store.DeleteAsync(key, ct);
-        var removed = Assert.IsType<StoredSession>(await store.ReadAsync(key, ct));
-        Assert.Equal(SessionLifecycleState.None, removed.State);
-        Assert.Equal(6, removed.Generation);
-        Assert.NotEqual(session.Epoch, removed.Epoch);
-        Assert.Null(removed.AccessToken);
-        Assert.Null(removed.RefreshToken);
-        Assert.Null(removed.Subject);
+        Assert.Null(await store.ReadAsync(key, ct));
         await store.DeleteAsync(key, ct);
-        var again = Assert.IsType<StoredSession>(await store.ReadAsync(key, ct));
-        Assert.Equal(7, again.Generation);
-        Assert.NotEqual(removed.Epoch, again.Epoch);
+        Assert.Null(await store.ReadAsync(key, ct));
     }
 
     [Fact]
-    public async Task DeleteOfAMissingKeyStillLeavesAnEpochForInFlightLoginChecks()
+    public async Task DeleteOfAMissingKeySucceedsWithoutCreatingARecord()
     {
         var ct = TestContext.Current.CancellationToken;
         var store = new MemoryTokenStore();
         var key = SessionKey.ForProfile(CoreTestData.Profile());
         await store.DeleteAsync(key, ct);
-        var session = Assert.IsType<StoredSession>(await store.ReadAsync(key, ct));
-        Assert.Equal(SessionLifecycleState.None, session.State);
-        Assert.NotEqual(Guid.Empty, session.Epoch);
+        Assert.Null(await store.ReadAsync(key, ct));
     }
 
     [Fact]
@@ -125,16 +115,16 @@ public sealed class MemoryTokenStoreTests
     }
 
     [Fact]
-    public async Task GenerationOverflowCannotSilentlyResetOrRemoveASession()
+    public async Task DeleteRemovesASessionAtTheMaximumGeneration()
     {
         var ct = TestContext.Current.CancellationToken;
         var store = new MemoryTokenStore();
         var key = SessionKey.ForProfile(CoreTestData.Profile());
         var session = CoreTestData.Session(generation: long.MaxValue);
         await store.WriteAsync(key, session, ct);
-        var failure = await Assert.ThrowsAsync<CliAuthException>(async () => await store.DeleteAsync(key, ct));
-        Assert.Equal(AuthErrorCode.StorageCorrupt, failure.ErrorCode);
-        Assert.Same(session, await store.ReadAsync(key, ct));
+        // Removal computes no successor generation, so it cannot overflow.
+        await store.DeleteAsync(key, ct);
+        Assert.Null(await store.ReadAsync(key, ct));
     }
 
     [Fact]

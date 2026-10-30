@@ -35,8 +35,32 @@ public sealed class SessionCoordinatorTests
     }
 
     [Fact]
-    public async Task LoginCannotUndoLogoutEvenWhenTheOriginalSessionWasMissing()
+    public async Task LoginStartedWhileSignedInIsSupersededByLogout()
     {
+        var fixture = new Fixture();
+        var ct = TestContext.Current.CancellationToken;
+        await fixture.SeedAsync(Session(fixture.Profile));
+        var entered = Signal<bool>();
+        var result = Signal<ValidatedLogin>();
+        fixture.Protocol.Login = async (_, _, _, token) =>
+        {
+            entered.SetResult(true);
+            return await result.Task.WaitAsync(token);
+        };
+        var login = fixture.Auth().LoginAsync("work", new LoginOptions(), ct);
+        await Bounded(entered.Task);
+        Assert.True((await Bounded(fixture.Auth().LogoutAsync("work", new LogoutOptions(), ct))).LocalSessionRemoved);
+        result.SetResult(Candidate(fixture.Profile));
+        var error = await Assert.ThrowsAsync<CliAuthException>(() => login);
+        Assert.Equal(AuthErrorCode.OperationSuperseded, error.ErrorCode);
+        Assert.Null(await fixture.ReadAsync());
+    }
+
+    [Fact]
+    public async Task LoginStartedWhileSignedOutCommitsAfterLogoutOfTheEmptyProfile()
+    {
+        // ADR 0007: logout removes records, so no epoch fences a login that began with no session.
+        // The login stores fresh credentials the user just obtained; nothing removed is resurrected.
         var fixture = new Fixture();
         var ct = TestContext.Current.CancellationToken;
         var entered = Signal<bool>();
@@ -52,9 +76,10 @@ public sealed class SessionCoordinatorTests
         var logout = await Bounded(fixture.Auth().LogoutAsync("work", new LogoutOptions(), ct));
         Assert.True(logout.LocalSessionRemoved);
         result.SetResult(Candidate(fixture.Profile));
-        var error = await Assert.ThrowsAsync<CliAuthException>(() => login);
-        Assert.Equal(AuthErrorCode.OperationSuperseded, error.ErrorCode);
-        Assert.Equal(SessionLifecycleState.None, (await fixture.ReadAsync())!.State);
+        var committed = await login;
+        var stored = await fixture.ReadAsync();
+        Assert.Equal(SessionLifecycleState.Active, stored!.State);
+        Assert.Equal(committed.Subject, stored.Subject);
     }
 
     [Fact]

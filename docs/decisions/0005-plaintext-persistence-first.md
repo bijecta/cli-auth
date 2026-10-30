@@ -1,6 +1,6 @@
 # 0005: Implement explicit plaintext persistence before protected backends
 
-Status: Accepted
+Status: Accepted (logout tombstones superseded by [ADR 0007](0007-logout-deletes-session-records.md))
 
 Date: 2026-10-29
 
@@ -42,7 +42,8 @@ Prioritize the following behavior for the first persistence milestone:
 - Matching process-local and cross-process locks with bounded, cancellable waits,
   stable lock files, and no forced takeover of a live owner.
 - Durable credential-free logout tombstones so stale login or later refresh work
-  cannot resurrect a logged-out session.
+  cannot resurrect a logged-out session. *Superseded by ADR 0007: logout deletes
+  the record; per-session epochs fence stale work.*
 - Explicit corruption/schema failures, independent profile progress, and real
   multi-process tests including abrupt termination and competing login/logout.
 - Credential-free diagnostics, logs, snapshots, and test artifacts.

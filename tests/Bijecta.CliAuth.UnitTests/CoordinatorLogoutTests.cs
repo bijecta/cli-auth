@@ -17,7 +17,7 @@ public sealed class CoordinatorLogoutTests
         Assert.Equal(RevocationOutcome.NotRequested, result.RevocationOutcome);
         Assert.Equal(0, fixture.Store.Reads);
         Assert.Equal(0, fixture.Protocol.RevokeCalls);
-        Assert.Equal(SessionLifecycleState.None, (await fixture.ReadAsync())!.State);
+        Assert.Null(await fixture.ReadAsync());
     }
 
     [Theory]
@@ -33,7 +33,7 @@ public sealed class CoordinatorLogoutTests
         {
             Assert.Same(fixture.Profile, profile);
             Assert.Equal("synthetic-refresh", token);
-            Assert.Equal(SessionLifecycleState.None, (await fixture.ReadAsync())!.State);
+            Assert.Null(await fixture.ReadAsync());
             await using var lease = await fixture.Store.Inner.AcquireAsync(fixture.Key, TimeSpan.FromSeconds(1), ct);
             return outcome;
         };
@@ -52,7 +52,7 @@ public sealed class CoordinatorLogoutTests
         var result = await fixture.Auth().LogoutAsync("work", new LogoutOptions(true), TestContext.Current.CancellationToken);
         Assert.True(result.LocalSessionRemoved);
         Assert.Equal(RevocationOutcome.Failed, result.RevocationOutcome);
-        Assert.Equal(SessionLifecycleState.None, (await fixture.ReadAsync())!.State);
+        Assert.Null(await fixture.ReadAsync());
     }
 
     [Theory]
@@ -67,7 +67,7 @@ public sealed class CoordinatorLogoutTests
         var result = await fixture.Auth().LogoutAsync("work", new LogoutOptions(true), TestContext.Current.CancellationToken);
         Assert.True(result.LocalSessionRemoved);
         Assert.Equal(RevocationOutcome.Failed, result.RevocationOutcome);
-        Assert.Equal(SessionLifecycleState.None, (await fixture.ReadAsync())!.State);
+        Assert.Null(await fixture.ReadAsync());
         Assert.Equal(0, fixture.Protocol.RevokeCalls);
     }
 
@@ -126,7 +126,7 @@ public sealed class CoordinatorLogoutTests
         await Bounded(entered.Task);
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => logout);
-        Assert.Equal(SessionLifecycleState.None, (await fixture.ReadAsync())!.State);
+        Assert.Null(await fixture.ReadAsync());
     }
 
     [Fact]
@@ -153,7 +153,7 @@ public sealed class CoordinatorLogoutTests
         Assert.True(remoteToken.IsCancellationRequested);
         Assert.True(result.LocalSessionRemoved);
         Assert.Equal(RevocationOutcome.Failed, result.RevocationOutcome);
-        Assert.Equal(SessionLifecycleState.None, (await fixture.ReadAsync())!.State);
+        Assert.Null(await fixture.ReadAsync());
     }
 
     private sealed class DeadlineClock : TimeProvider

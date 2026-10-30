@@ -1,7 +1,8 @@
-# File storage: reads, staged replacement writes, and matching leases
+# File storage: reads, staged replacement writes, logout, and matching leases
 
-`FileTokenStore` provides plaintext session-file reads and same-directory staged
-replacement writes, plus matching local session locks through `ISessionLockProvider`.
+`FileTokenStore` provides plaintext session-file reads, same-directory staged
+replacement writes, and record removal for logout, plus matching local session
+locks through `ISessionLockProvider`.
 It references Core; Core does not reference it. `ITokenStore`,
 `ISessionLockProvider`, and `MemoryTokenStore` remain in Core.
 
@@ -10,6 +11,7 @@ var store = new FileTokenStore(storageDirectory);
 await using var lease = await store.AcquireAsync(sessionKey, TimeSpan.FromSeconds(30), cancellationToken);
 await store.WriteAsync(sessionKey, session, cancellationToken);
 var restored = await store.ReadAsync(sessionKey, cancellationToken);
+await store.DeleteAsync(sessionKey, cancellationToken);
 ```
 
 The host supplies an absolute directory. Construction validates/normalizes the path
@@ -43,8 +45,8 @@ See [Windows rename semantics](https://learn.microsoft.com/en-us/windows-hardwar
 [File.Move](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.move)
 and the [format/atomicity walkthrough](../../docs/usage/session-file-format.md).
 
-This incremental class still does not implement ITokenStore: durable logout and
-explicit plaintext-policy integration remain later steps. Hold the matching lease
+This incremental class still does not implement ITokenStore: explicit
+plaintext-policy integration remains a later step. Hold the matching lease
 across the complete read/check/write operation to prevent lost updates.
 An explicit write does not inspect previous content for corruption.
 
@@ -112,5 +114,15 @@ stdout/stdin readiness/release handshakes, controlled time, killed holders,
 concurrent disposal, and disabled-implicit-locking children in both directions.
 Hosted success must be established by actual CI results, not inferred
 from the local macOS run. These tests do not simulate physical power failure.
+
+## Logout
+
+`DeleteAsync` removes `<sessionKey>.json` under the caller-held lease, without
+reading it, so explicit logout can remove corrupt or unsupported-schema records.
+Missing records/directories succeed and create nothing; repeated logout is a no-op.
+Afterwards this key's orphaned staging files are deleted best effort; the lock file
+is kept. A failure to remove the record returns sanitized StorageUnavailable.
+Every committed session has a fresh epoch, which fences work that started from it.
+See [ADR 0007](../../docs/decisions/0007-logout-deletes-session-records.md).
 
 See [ADR 0005](../../docs/decisions/0005-plaintext-persistence-first.md).
