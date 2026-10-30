@@ -8,12 +8,11 @@ Architecture decisions belong in ADRs; this file records implementation status.
 
 Last updated: 2026-10-30.
 
-- Current implementation commit: `bff76ee` on `feat/storage-session-locks`
-  (cross-platform session leases); not yet merged to main.
+- Current implementation commit: `bff76ee` (cross-platform session leases),
+  fast-forward merged to main with the maintainer's approval.
 - ADR 0006 is Accepted by the maintainer (2026-10-30). The implementation,
-  review follow-up, and documentation are committed on branch
-  `feat/storage-session-locks` and pushed to trigger the hosted matrix; nothing is
-  merged to main or published. Parent design documents stay outside Git.
+  review follow-up, and documentation are on main; no packages are published.
+  Parent design documents stay outside Git.
 - Windows atomic writes: user confirmed working after the correction.
 - Step 2 implementation: FileTokenStore now implements ISessionLockProvider using
   retained per-key lock files, exclusive Windows handles, and Unix FileShare.None
@@ -46,9 +45,8 @@ Last updated: 2026-10-30.
   retries for up to ~2 s on IOException/UnauthorizedAccessException.
 - Hosted run 41135383924 on `bff76ee`: ubuntu-latest, windows-latest, macos-latest,
   and the Linux Keycloak integration job all passed. Step 2 is complete.
-- Next action: merge `feat/storage-session-locks` to main once the maintainer
-  approves, then discuss step 3's durable logout/tombstone behavior before
-  implementation. Merge to main only after the
+- Next action: discuss step 3's durable logout/tombstone behavior with the
+  maintainer before implementation. Merge to main only after the
   matrix passes and the maintainer approves.
 - Deferred limits: network shares are unsupported; automatic filesystem detection,
   symlink/descriptor checks, and ownership hardening remain step 5. Lease-required
