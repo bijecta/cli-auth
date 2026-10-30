@@ -46,7 +46,7 @@ MoveFileEx publication path. That test is retained and now also covers a Unicode
 directory. Windows requires filesystem support for the extended POSIX rename;
 unsupported operations fail as StorageUnavailable, with no copy/delete, delete-first,
 or legacy replacement fallback. The maintainer confirmed Windows atomic writes
-work after the correction; hosted results for the new lock tests remain pending.
+work after the correction; the lock tests also pass on the hosted matrix.
 See [Microsoft's rename flag contract](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information),
 [SetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle),
 and [.NET's Unix implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/IO/FileSystem.Unix.cs).
@@ -138,6 +138,5 @@ on cancellation/failure, temporary-file cleanup ownership, and old/new reader ha
 Lock tests additionally cover same-key contention, independent keys/directories,
 bounded waits, cancellation, process termination, lease disposal races, and disabled
 implicit .NET locking in subprocesses. Controlled-time tests verify deadlines and
-retry behavior. They run in the existing Ubuntu/Windows/macOS matrix; new hosted
-lock results are pending. Full power-loss durability, permission/path hardening,
+retry behavior. They pass in the existing Ubuntu/Windows/macOS hosted matrix. Full power-loss durability, permission/path hardening,
 and encryption remain outside these tests.

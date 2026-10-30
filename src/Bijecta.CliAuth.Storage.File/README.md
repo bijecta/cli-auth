@@ -102,8 +102,8 @@ and filesystem failures map to StorageUnavailable without raw paths/inner except
 The normal solution includes StorageTests, so the existing Ubuntu/Windows/macOS
 build-and-test matrix runs the same atomicity tests on all three hosted runners. The initial Windows run found that legacy
 MoveFileEx replacement failed with an open reader; the native POSIX-rename fix
-was confirmed working by the maintainer. Hosted results for the new lock suite
-remain pending.
+was confirmed working by the maintainer. The lock suite also passes on all
+three hosted runners.
 Tests cover staging visibility, cancellation/failure preservation, cleanup ownership,
 replacement with an open reader, and restrictive Unix replacement modes. An internal
 pre-publication test boundary supports deterministic fault injection without adding

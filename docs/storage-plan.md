@@ -8,7 +8,8 @@ Architecture decisions belong in ADRs; this file records implementation status.
 
 Last updated: 2026-10-30.
 
-- Current implementation commit: `0ade559` (Windows atomic publication correction).
+- Current implementation commit: `bff76ee` on `feat/storage-session-locks`
+  (cross-platform session leases); not yet merged to main.
 - ADR 0006 is Accepted by the maintainer (2026-10-30). The implementation,
   review follow-up, and documentation are committed on branch
   `feat/storage-session-locks` and pushed to trigger the hosted matrix; nothing is
@@ -43,9 +44,11 @@ Last updated: 2026-10-30.
   as exited before its handles close. The provider was not at fault. Fix: the test
   now releases the child through the stdin protocol, and test-directory cleanup
   retries for up to ~2 s on IOException/UnauthorizedAccessException.
-- Next action: confirm the rerun passes on windows-latest (and still on Ubuntu/macOS)
-  before marking step 2 complete. Once verified, discuss step 3's durable
-  logout/tombstone behavior before implementation. Merge to main only after the
+- Hosted run 41135383924 on `bff76ee`: ubuntu-latest, windows-latest, macos-latest,
+  and the Linux Keycloak integration job all passed. Step 2 is complete.
+- Next action: merge `feat/storage-session-locks` to main once the maintainer
+  approves, then discuss step 3's durable logout/tombstone behavior before
+  implementation. Merge to main only after the
   matrix passes and the maintainer approves.
 - Deferred limits: network shares are unsupported; automatic filesystem detection,
   symlink/descriptor checks, and ownership hardening remain step 5. Lease-required
@@ -76,7 +79,7 @@ zero warnings/errors; 61 storage and 114 unit tests passed locally. User confirm
 Windows atomic writes work. Full Ubuntu/macOS CI results were not supplied in that
 follow-up. Atomic publication is not a universal power-loss durability guarantee.
 
-### 2. Matching session locks — implementation in progress
+### 2. Matching session locks — complete
 
 - [x] Select and document a Windows/Linux/macOS lock primitive and its limitations.
 - [x] Implement `ISessionLockProvider` in Storage.File, keeping contracts in Core.
@@ -85,19 +88,18 @@ follow-up. Atomic publication is not a universal power-loss durability guarantee
 - [x] Support cancellable, bounded waits; map timeout to `SessionBusy`.
 - [x] Make lease disposal safe and release ownership after abrupt process exit.
 - [x] Define a stable lock-file identity/lifecycle so cleanup cannot split ownership.
-- [ ] Verify contention, cancellation, timeout, independent keys, and process exit
+- [x] Verify contention, cancellation, timeout, independent keys, and process exit
   using real subprocesses on the Ubuntu/Windows/macOS matrix.
 
-Evidence: In progress, hosted matrix pending. ADR 0006 is accepted. The provider
+Evidence: `bff76ee`; hosted run 41135383924 passed on Ubuntu, Windows, and macOS
+(an earlier run failed only a Windows test-cleanup race, since fixed). ADR 0006 is accepted. The provider
 and process helper are implemented. Locked restore and Release build passed with
 zero warnings/errors; all 344 solution tests passed on macOS, including 85 storage
 tests (24 lock cases). Usage docs and parent architecture match this slice.
 Full solution dotnet format verification and git diff --check passed. Review
 follow-up hardened probe budgets, helper host/output resolution, and open-failure
-classification coverage. Checked items record
-implemented behavior verified locally; native Windows/Linux behavior requires matrix
-results. The acceptance checkbox for the three-OS process tests remains open until
-those results exist. Committed on `feat/storage-session-locks` for hosted CI. Atomic writes alone do not prevent lost
+classification coverage. Real-process lock tests passed natively on all three
+hosted runners. Atomic writes alone do not prevent lost
 updates: the caller/coordinator must hold the matching lease across compound work.
 Do not add nested automatic acquisition to store methods.
 
