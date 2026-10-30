@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Bijecta.CliAuth.Storage.File/Bijecta.CliAuth.Storage.File.csproj" />
+  </ItemGroup>
+</Project>

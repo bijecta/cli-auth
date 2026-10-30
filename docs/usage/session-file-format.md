@@ -6,14 +6,16 @@ this package owns file-format details. `CliAuthenticator` will continue to accep
 an `ITokenStore` supplied by the host.
 
 The serializer is internal; the public `FileTokenStore` now uses it for disk reads and staged replacement writes. The class is intentionally not yet an `ITokenStore`, so
-it cannot be injected into the authenticator. Matching locks,
-and durable logout operations follow separately. The existing Core storage
+it cannot be injected into the authenticator. Matching session leases are now
+available through ISessionLockProvider; durable logout and persistence-policy
+integration follow separately. The existing Core storage
 contract remains unchanged.
 
 ## Disk usage
 
 ```csharp
 var store = new FileTokenStore(storageDirectory);
+await using var lease = await store.AcquireAsync(sessionKey, TimeSpan.FromSeconds(30), cancellationToken);
 await store.WriteAsync(sessionKey, session, cancellationToken);
 var restored = await store.ReadAsync(sessionKey, cancellationToken);
 ```
@@ -43,13 +45,23 @@ The original Windows matrix run failed its open-reader test with the legacy
 MoveFileEx publication path. That test is retained and now also covers a Unicode
 directory. Windows requires filesystem support for the extended POSIX rename;
 unsupported operations fail as StorageUnavailable, with no copy/delete, delete-first,
-or legacy replacement fallback. A hosted rerun is needed to validate the correction.
+or legacy replacement fallback. The maintainer confirmed Windows atomic writes
+work after the correction; hosted results for the new lock tests remain pending.
 See [Microsoft's rename flag contract](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information),
 [SetFileInformationByHandle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle),
 and [.NET's Unix implementation](https://github.com/dotnet/runtime/blob/v10.0.0/src/libraries/System.Private.CoreLib/src/System/IO/FileSystem.Unix.cs).
 
-There are no coordination locks or durable logout operations yet. Complete-file
-publication does not prevent lost updates between competing writers. It also does
+Hold the matching lease across each compound read/check/write operation; raw
+store methods do not acquire leases automatically. Leases use retained per-key
+`.lock` files, exclusive Windows handles, and explicit Unix flock; cancellation
+interrupts waits and expired contention returns SessionBusy. The provider never
+deletes lock files, including on release or process exit. Only cooperating
+processes on supported stable local filesystems are covered; network shares,
+musl, and full path hardening are not verified. See the
+[lease usage and limits](../../src/Bijecta.CliAuth.Storage.File/README.md#matching-session-leases).
+
+Durable logout operations are not implemented yet. Complete-file publication
+without a caller-held lease does not prevent lost updates between writers. It also does
 not establish universal power-loss durability: parent-directory synchronization
 and filesystem-specific recovery are outside this slice. A killed process or
 failed cleanup can leave an orphaned private temporary file; reads ignore it.
@@ -123,5 +135,9 @@ temporary directories with synthetic credentials. They cover creation, missing r
 readback through another instance, replacement, isolation, cancellation, corrupt/large
 files, safe I/O errors, and new Unix modes. Atomic-write tests additionally verify staging visibility, original-session preservation
 on cancellation/failure, temporary-file cleanup ownership, and old/new reader handles.
-They run in the existing Ubuntu/Windows/macOS matrix. Full power-loss durability,
-coordination, permission/path hardening, and encryption remain outside these tests.
+Lock tests additionally cover same-key contention, independent keys/directories,
+bounded waits, cancellation, process termination, lease disposal races, and disabled
+implicit .NET locking in subprocesses. Controlled-time tests verify deadlines and
+retry behavior. They run in the existing Ubuntu/Windows/macOS matrix; new hosted
+lock results are pending. Full power-loss durability, permission/path hardening,
+and encryption remain outside these tests.

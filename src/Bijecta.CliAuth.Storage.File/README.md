@@ -1,11 +1,13 @@
-# File storage: reads and staged replacement writes
+# File storage: reads, staged replacement writes, and matching leases
 
 `FileTokenStore` provides plaintext session-file reads and same-directory staged
-replacement writes. It references Core; Core does not reference it. `ITokenStore`,
+replacement writes, plus matching local session locks through `ISessionLockProvider`.
+It references Core; Core does not reference it. `ITokenStore`,
 `ISessionLockProvider`, and `MemoryTokenStore` remain in Core.
 
 ```csharp
 var store = new FileTokenStore(storageDirectory);
+await using var lease = await store.AcquireAsync(sessionKey, TimeSpan.FromSeconds(30), cancellationToken);
 await store.WriteAsync(sessionKey, session, cancellationToken);
 var restored = await store.ReadAsync(sessionKey, cancellationToken);
 ```
@@ -41,10 +43,46 @@ See [Windows rename semantics](https://learn.microsoft.com/en-us/windows-hardwar
 [File.Move](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.move)
 and the [format/atomicity walkthrough](../../docs/usage/session-file-format.md).
 
-This incremental class still does not implement ITokenStore: matching locks,
-durable logout, and explicit plaintext-policy integration remain later steps.
-Atomic publication does not prevent two writers from losing each other's updates.
+This incremental class still does not implement ITokenStore: durable logout and
+explicit plaintext-policy integration remain later steps. Hold the matching lease
+across the complete read/check/write operation to prevent lost updates.
 An explicit write does not inspect previous content for corruption.
+
+## Matching session leases
+
+`AcquireAsync(key, timeout, ct)` coordinates the same key across store instances
+and cooperating processes using `<sessionKey>.lock` in the host-selected directory.
+Different keys/directories remain independent. Construction still performs no I/O;
+acquisition creates directories/files on demand. Read/write methods do not acquire
+leases automatically. Callers must hold the lease across compound operations;
+nested acquisition for the same key is not reentrant and eventually times out.
+
+Windows keeps a FileShare.None handle open. Unix uses FileShare.None plus an
+explicit nonblocking native flock on the same SafeFileHandle, so disabled or
+best-effort .NET locking cannot silently grant a lease. Initial Linux support
+targets glibc; musl is not verified. There is no extra in-process semaphore.
+See [ADR 0006](../../docs/decisions/0006-cross-platform-session-locks.md).
+
+The timeout must be positive and at most int.MaxValue milliseconds; invalid
+timeouts return InvalidRequest. Waits use a monotonic budget and cancellable async
+polling at 20–30 ms, capped by remaining time. Contention reaching the deadline
+returns SessionBusy; cancellation throws OperationCanceledException. Other I/O,
+permission, and native-load failures return sanitized StorageUnavailable.
+Synchronous filesystem calls cannot be interrupted mid-call. No FIFO fairness or
+starvation prevention is promised. On Windows, antivirus/indexer/sync-client
+handles can cause transient contention too.
+
+Disposal is idempotent and closes the owned handle once. Process termination also
+releases ownership. Lock files are retained, never deleted, truncated, or replaced
+by the provider. Their presence/content does not indicate ownership. Do not clean
+them up while processes could reference them: doing so can split lock identity.
+
+Only stable local filesystems with native lock semantics are supported. Unix
+locking is advisory; arbitrary writers can bypass it. Network filesystems are
+unsupported, and filesystem-type detection is not implemented. Emulated locks
+with process-owned semantics can fail to exclude independent opens in one process.
+Full ownership, symlink, descriptor-type, and path-substitution checks remain open;
+the host must supply a trusted local directory and keep its identity stable.
 
 File flushing does not make the subsequent directory rename fully power-loss
 durable. No parent-directory synchronization or universal filesystem guarantee is
@@ -64,11 +102,15 @@ and filesystem failures map to StorageUnavailable without raw paths/inner except
 The normal solution includes StorageTests, so the existing Ubuntu/Windows/macOS
 build-and-test matrix runs the same atomicity tests on all three hosted runners. The initial Windows run found that legacy
 MoveFileEx replacement failed with an open reader; the native POSIX-rename fix
-requires a new hosted run.
+was confirmed working by the maintainer. Hosted results for the new lock suite
+remain pending.
 Tests cover staging visibility, cancellation/failure preservation, cleanup ownership,
 replacement with an open reader, and restrictive Unix replacement modes. An internal
 pre-publication test boundary supports deterministic fault injection without adding
-public hooks. Hosted success must be established by actual CI results, not inferred
+public hooks. Session-lock tests additionally use a disposable subprocess helper,
+stdout/stdin readiness/release handshakes, controlled time, killed holders,
+concurrent disposal, and disabled-implicit-locking children in both directions.
+Hosted success must be established by actual CI results, not inferred
 from the local macOS run. These tests do not simulate physical power failure.
 
 See [ADR 0005](../../docs/decisions/0005-plaintext-persistence-first.md).

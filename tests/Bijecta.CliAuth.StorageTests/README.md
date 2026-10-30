@@ -1,7 +1,8 @@
 # Storage tests
 
 This executable xUnit/Microsoft.Testing.Platform project tests compact JSON
-serialization and disk reads/staged replacement in `Bijecta.CliAuth.Storage.File`.
+serialization, disk reads/staged replacement, and matching session leases in
+`Bijecta.CliAuth.Storage.File`.
 Run it with the normal solution test command in the root README.
 
 Serializer tests use synthetic credentials and in-memory bytes. They cover round
@@ -19,8 +20,25 @@ reader, and restrictive Unix replacement modes. The project is in the normal
 solution; the existing Ubuntu/Windows/macOS CI matrix executes this same suite.
 Windows behavior is not skipped. Unix-mode assertions apply only on Unix hosts.
 
+Lock tests verify same/different-key behavior across instances and processes,
+timeout/cancellation, persistent identities and Unix modes, safe errors, process
+termination, non-inheritance of unrelated leases, and concurrent/repeated disposal.
+FakeTimeProvider tests exercise capped delays, retry scheduling, cancellation,
+and cancellation/deadline before ownership handoff without waiting for wall time.
+
+`Bijecta.CliAuth.LockProcess` is a separate executable helper built by the solution
+and copied to the test output's LockProcess directory. It writes WAITING before
+acquisition and ACQUIRED only after handoff; stdin EOF releases a held lease.
+Probes expecting contention use a 150 ms budget; probes expecting acquisition use
+5 s so transient third-party handles (for example Windows antivirus) cannot fail
+them. The helper starts through DOTNET_HOST_PATH when the SDK provides it.
+Crash tests kill its entire process tree and wait for exit. All helper waits are
+bounded and cleanup runs even if the test token expires. Child environments set
+DOTNET_SYSTEM_IO_DISABLEFILELOCKING before startup; both parent-held/child-waiting
+and child-held/parent-waiting cases exercise explicit Unix locking.
+
 No real credentials or OS credential services are used. Power-loss durability,
-process coordination, full permission/path hardening, and native protection tests
+full permission/path hardening, and native protection tests
 will be added with their implementation slices. Hosted OS success requires actual
 CI results; it is not inferred from a local run.
 

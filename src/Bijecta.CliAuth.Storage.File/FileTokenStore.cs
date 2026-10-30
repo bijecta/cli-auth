@@ -3,27 +3,29 @@ using Bijecta.CliAuth.Core;
 
 namespace Bijecta.CliAuth.Storage.File;
 
-/// <summary>Plaintext session-file reads and same-directory staged replacement writes.</summary>
+/// <summary>Plaintext session-file reads, staged replacement writes, and matching local session leases.</summary>
 /// <remarks>
-/// This incremental implementation does not yet implement ITokenStore: matching session locks
-/// and durable logout operations are later steps. Replacement is scoped to supported local filesystems;
-/// it does not provide full power-loss durability or prevent competing writers from losing updates.
+/// This incremental implementation does not yet implement ITokenStore: durable logout and persistence
+/// policy integration remain later steps. Callers hold a matching lease across compound operations.
+/// Replacement and locking target supported stable local filesystems, without full power-loss durability.
 /// </remarks>
 [DebuggerDisplay("FileTokenStore (plaintext, read/write only)")]
-public sealed class FileTokenStore
+public sealed class FileTokenStore : ISessionLockProvider
 {
     private const UnixFileMode DirectoryMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
     private const UnixFileMode FileModePermissions = UnixFileMode.UserRead | UnixFileMode.UserWrite;
 
     private readonly Func<string, CancellationToken, Task>? _beforePublish;
+    private readonly FileSessionLockProvider _locks;
 
     /// <summary>Validates an explicitly supplied absolute directory without accessing the filesystem.</summary>
     public FileTokenStore(string storageDirectory) : this(storageDirectory, null)
     {
     }
 
-    // A test-only pause/failure boundary after the staged file is flushed and closed, before publication.
-    internal FileTokenStore(string storageDirectory, Func<string, CancellationToken, Task>? beforePublish)
+    // Internal test seams for publication, lock timing, and the ownership handoff boundary.
+    internal FileTokenStore(string storageDirectory, Func<string, CancellationToken, Task>? beforePublish,
+        TimeProvider? timeProvider = null, Func<TimeSpan>? retryDelay = null, Action? beforeLockHandoff = null)
     {
         _beforePublish = beforePublish;
         if (string.IsNullOrWhiteSpace(storageDirectory) || !Path.IsPathFullyQualified(storageDirectory))
@@ -35,7 +37,14 @@ public sealed class FileTokenStore
         {
             throw new CliAuthException(AuthErrorCode.InvalidConfiguration);
         }
+        _locks = new FileSessionLockProvider(StorageDirectory, timeProvider ?? TimeProvider.System,
+            retryDelay ?? (() => TimeSpan.FromMilliseconds(Random.Shared.Next(20, 31))), beforeLockHandoff);
     }
+
+    /// <summary>Acquires the matching per-session lease across instances and cooperating local processes.</summary>
+    /// <remarks>Hold this lease across compound reads and mutations. Lock files are retained after release.</remarks>
+    public ValueTask<IAsyncDisposable> AcquireAsync(SessionKey key, TimeSpan timeout, CancellationToken ct) =>
+        _locks.AcquireAsync(key, timeout, ct);
 
     /// <summary>The host-selected directory; individual file names are derived from session keys.</summary>
     public string StorageDirectory { get; }
