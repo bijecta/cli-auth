@@ -1,6 +1,6 @@
 using System.CommandLine;
-using System.Text.Json;
 using Bijecta.CliAuth.Core;
+using Bijecta.CliAuth.Sample.Cli;
 using Bijecta.CliAuth.Storage.File;
 
 var root = new RootCommand("Bijecta.CliAuth development sample. Storage is explicitly selected: process memory for demo, plaintext files for the persistent commands.");
@@ -55,9 +55,6 @@ LoginOptions Options(ParseResult parse) => parse.GetValue(flow) switch
     return (new CliAuthenticator(configured, new FileTokenStore(parse.GetValue(storageDir)!)), names[0]);
 }
 
-object Describe(SessionStatus status) =>
-    new { Kind = status.Kind.ToString(), status.ExpiresAtUtc, status.Subject, Issuer = status.Issuer?.OriginalString };
-
 void Add(Command command, params Option[] options)
 {
     foreach (var option in options) { command.Options.Add(option); }
@@ -74,13 +71,13 @@ demo.SetAction((parse, cancellationToken) => Run(async () =>
     if (options.Flow == LoginFlow.Browser) { Console.WriteLine("Opening your browser."); }
     var login = await auth.LoginAsync("demo", options, cancellationToken);
 
-    Console.WriteLine(JsonSerializer.Serialize(new { action = "login", Persistence = login.Persistence.ToString(), login.ExpiresAtUtc, login.GrantedScopes }));
+    SampleOutput.Print(new(Action: "login", Persistence: login.Persistence, ExpiresAtUtc: login.ExpiresAtUtc, GrantedScopes: login.GrantedScopes));
     var token = await auth.GetAccessTokenAsync("demo", cancellationToken);
-    Console.WriteLine(JsonSerializer.Serialize(new { action = "acquire", token.ExpiresAtUtc, token.GrantedScopes }));
+    SampleOutput.Print(new(Action: "acquire", ExpiresAtUtc: token.ExpiresAtUtc, GrantedScopes: token.GrantedScopes));
     var status = await auth.GetStatusAsync("demo", cancellationToken);
-    Console.WriteLine(JsonSerializer.Serialize(new { action = "status", Kind = status.Kind.ToString() }));
+    SampleOutput.Print(new(Action: "status", Kind: status.Kind));
     var logout = await auth.LogoutAsync("demo", new LogoutOptions(), cancellationToken);
-    Console.WriteLine(JsonSerializer.Serialize(new { action = "logout", logout.LocalSessionRemoved, RevocationOutcome = logout.RevocationOutcome.ToString() }));
+    SampleOutput.Print(new(Action: "logout", LocalSessionRemoved: logout.LocalSessionRemoved, RevocationOutcome: logout.RevocationOutcome));
     Console.WriteLine("Local session removed. Your provider's browser session may still be active.");
     return 0;
 }, cancellationToken));
@@ -94,7 +91,8 @@ login.SetAction((parse, cancellationToken) => Run(async () =>
     Console.WriteLine("Warning: tokens will be stored unencrypted in the storage directory.");
     if (options.Flow == LoginFlow.Browser) { Console.WriteLine("Opening your browser."); }
     var result = await auth.LoginAsync(profile, options, cancellationToken);
-    Console.WriteLine(JsonSerializer.Serialize(new { action = "login", profile, Persistence = result.Persistence.ToString(), result.Subject, result.ExpiresAtUtc, result.GrantedScopes }));
+    SampleOutput.Print(new(Action: "login", Profile: profile, Persistence: result.Persistence, Subject: result.Subject,
+        ExpiresAtUtc: result.ExpiresAtUtc, GrantedScopes: result.GrantedScopes));
     return 0;
 }, cancellationToken));
 
@@ -104,7 +102,7 @@ status.SetAction((parse, cancellationToken) => Run(async () =>
 {
     var (auth, profile) = Persistent(parse);
     var result = await auth.GetStatusAsync(profile, cancellationToken);
-    Console.WriteLine(JsonSerializer.Serialize(new { action = "status", profile, Status = Describe(result) }));
+    SampleOutput.Print(new(Action: "status", Profile: profile, Status: StatusOutput.From(result)));
     return 0;
 }, cancellationToken));
 
@@ -115,9 +113,9 @@ list.SetAction((parse, cancellationToken) => Run(async () =>
     var (auth, _) = Persistent(parse, single: false);
     foreach (var entry in await auth.ListSessionsAsync(cancellationToken))
     {
-        Console.WriteLine(entry.Error is { } error
-            ? JsonSerializer.Serialize(new { profile = entry.ProfileName, Error = error.ToString() })
-            : JsonSerializer.Serialize(new { profile = entry.ProfileName, Status = Describe(entry.Status!) }));
+        SampleOutput.Print(entry.Error is { } error
+            ? new(Profile: entry.ProfileName, Error: error)
+            : new(Profile: entry.ProfileName, Status: StatusOutput.From(entry.Status!)));
     }
     return 0;
 }, cancellationToken));
@@ -128,7 +126,8 @@ logout.SetAction((parse, cancellationToken) => Run(async () =>
 {
     var (auth, profile) = Persistent(parse);
     var result = await auth.LogoutAsync(profile, new LogoutOptions(), cancellationToken);
-    Console.WriteLine(JsonSerializer.Serialize(new { action = "logout", profile, result.LocalSessionRemoved, RevocationOutcome = result.RevocationOutcome.ToString() }));
+    SampleOutput.Print(new(Action: "logout", Profile: profile, LocalSessionRemoved: result.LocalSessionRemoved,
+        RevocationOutcome: result.RevocationOutcome));
     return 0;
 }, cancellationToken));
 
@@ -147,7 +146,7 @@ static async Task<int> Run(Func<Task<int>> action, CancellationToken cancellatio
     }
     catch (CliAuthException error)
     {
-        Console.Error.WriteLine(JsonSerializer.Serialize(new { ErrorCode = error.ErrorCode.ToString(), error.ProviderErrorCode, error.Message, error.CorrelationId }));
+        ErrorOutput.Print(error);
         if (error.ErrorCode is AuthErrorCode.StorageCorrupt)
         {
             Console.Error.WriteLine("The stored session cannot be used. Run login again to replace it, or logout to remove it.");

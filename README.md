@@ -48,7 +48,16 @@ The OS matrix checks library and sample behavior on each host; it does not produ
 three different versions of the portable Core package. NuGet packing/release checks
 will be a separate step. Keycloak/Playwright tests use a separate integration solution
 and Linux CI job; see [integration prerequisites and commands](tests/Bijecta.CliAuth.KeycloakTests/README.md).
-The fixture helper is managed .NET code, with Native AOT disabled.
+The fixture helper is managed .NET code, with Native AOT disabled. The libraries are
+built with the trim and AOT analyzers as errors, and CI publishes the sample with
+Native AOT on each OS and smoke-tests the binary:
+
+```sh
+dotnet publish samples/Bijecta.CliAuth.Sample.Cli -c Release -r <rid> -p:PublishAot=true -o artifacts/aot
+```
+
+That publish restores without locked mode and rewrites lock files with runtime-specific
+entries; discard those changes (`git checkout -- '*.lock.json'`) rather than committing them.
 
 See [Core contracts](docs/usage/core-contracts.md), [authenticator composition and
 coordination](docs/usage/authenticator-composition.md), and the

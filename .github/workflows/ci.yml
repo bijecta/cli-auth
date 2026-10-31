@@ -40,6 +40,51 @@ jobs:
       - name: Check formatting
         run: dotnet format Bijecta.CliAuth.slnx --verify-no-changes --no-restore
 
+  native-aot:
+    name: Native AOT publish and smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+          - os: windows-latest
+            rid: win-x64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Install native toolchain prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+      # PublishAot adds runtime-specific lock entries, so this restore is not locked; the build job
+      # keeps locked restore. Trim/AOT warnings are errors, so a reflection regression fails here.
+      - name: Publish the sample with Native AOT
+        run: dotnet publish samples/Bijecta.CliAuth.Sample.Cli/Bijecta.CliAuth.Sample.Cli.csproj --configuration Release --runtime ${{ matrix.rid }} -p:PublishAot=true --output artifacts/aot
+      # Exercises native locking, private-directory creation, record reads, and JSON output offline.
+      - name: Smoke-test the native binary
+        run: |
+          set -euo pipefail
+          exe=artifacts/aot/bijecta-auth
+          dir="$(cygpath -m "$RUNNER_TEMP" 2> /dev/null || echo "$RUNNER_TEMP")/aot-store"
+          args=(--issuer https://login.example.test/realms/demo --client-id sample-cli --storage-dir "$dir")
+          expect() { local pattern=$1; shift; local out; out=$("$exe" "$@" "${args[@]}"); echo "$out"; grep -qF "$pattern" <<< "$out"; }
+          expect '"profile":"personal","status":{"kind":"None"}' list --profile work --profile personal
+          expect '"kind":"None"' status --profile work
+          key=$(basename "$(ls "$dir"/*.lock | head -n 1)" .lock)
+          (umask 077; printf '{"broken' > "$dir/$key.json")
+          expect '"error":"StorageCorrupt"' list --profile work --profile personal
+          expect '"localSessionRemoved":true' logout --profile work
+          expect '"localSessionRemoved":true' logout --profile personal
+          if compgen -G "$dir/*.json" > /dev/null; then echo "Session records remain after logout."; exit 1; fi
+
   browser-integration:
     name: Keycloak browser and device integration (Linux)
     runs-on: ubuntu-latest
