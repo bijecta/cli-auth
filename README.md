@@ -14,7 +14,7 @@ and DI registration remain unfinished.**
 | Package | Intended responsibility |
 |---|---|
 | Bijecta.CliAuth.Core | Authentication, flow adapters, contracts, session coordination, memory storage |
-| Bijecta.CliAuth.Storage.File | Explicitly selected plaintext `ITokenStore`: compact JSON, atomic replacement, logout, and matching session leases; filesystem hardening pending |
+| Bijecta.CliAuth.Storage.File | Explicitly selected plaintext `ITokenStore`: compact JSON, atomic replacement, logout, matching session leases, and private-location checks |
 | Bijecta.CliAuth.Storage.MacOS | Future macOS protected storage; design deferred |
 | Bijecta.CliAuth.Storage.Linux | Future Linux protected storage; design deferred |
 | Bijecta.CliAuth.Storage.Windows | Future Windows protected storage; design deferred |

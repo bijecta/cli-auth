@@ -49,8 +49,7 @@ public sealed class FileLogoutTests
     public async Task UnreadableRecordsCanOnlyBeRemovedByExplicitDelete(string content)
     {
         using var location = new TestDirectory();
-        Directory.CreateDirectory(location.Path);
-        await System.IO.File.WriteAllTextAsync(location.SessionPath(Key), content, Ct);
+        await PrivateTestFiles.WriteAsync(location.SessionPath(Key), content, Ct);
         var store = new FileTokenStore(location.Path);
         var error = await Assert.ThrowsAsync<CliAuthException>(() => store.ReadAsync(Key, Ct).AsTask());
         Assert.True(error.ErrorCode is AuthErrorCode.StorageCorrupt or AuthErrorCode.UnsupportedSchema);

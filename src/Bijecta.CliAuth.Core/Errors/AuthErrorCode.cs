@@ -41,4 +41,6 @@ public enum AuthErrorCode
     DestinationNotAllowed,
     /// <summary>The requested operation or data is invalid.</summary>
     InvalidRequest,
+    /// <summary>The storage location is unsafe, such as writable by others, shared, or on a network drive.</summary>
+    StorageInsecure,
 }

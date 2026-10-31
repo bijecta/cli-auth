@@ -42,7 +42,15 @@ Tokens are unencrypted; tell users so in your CLI. A profile requiring MemoryOnl
 Protected is rejected with FileTokenStore, and a Plaintext profile is rejected with
 MemoryTokenStore. Choose a per-user directory such as `$XDG_STATE_HOME/<app>` or
 `~/.local/state/<app>` (Linux), `~/Library/Application Support/<app>` (macOS), or
-`%LOCALAPPDATA%\<app>` (Windows); no default-location helper is provided yet.
+`%LOCALAPPDATA%\<app>` (Windows); no default-location helper is provided yet. The
+directory must be private to the user (Unix: not writable by group or others), or
+operations fail with StorageInsecure
+([ADR 0009](../decisions/0009-file-store-protections.md)).
+
+A corrupt record never yields a token: status and acquisition return StorageCorrupt.
+Explicit login replaces a record that is still corrupt when it commits; if a valid
+session appeared meanwhile, login returns OperationSuperseded. A newer-version
+record (UnsupportedSchema) still blocks login; explicit logout removes it.
 To move a profile off Plaintext later, delete its old record with
 `SessionKey.ForProfile(plaintextProfile)` and `FileTokenStore.DeleteAsync`
 ([ADR 0008](../decisions/0008-plaintext-persistence-integration.md)).

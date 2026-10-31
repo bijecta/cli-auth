@@ -122,7 +122,7 @@ list.SetAction((parse, cancellationToken) => Run(async () =>
     return 0;
 }, cancellationToken));
 
-var logout = new Command("logout", "Remove one profile's stored session, including a corrupt one.");
+var logout = new Command("logout", "Remove one profile's stored session, including a corrupt or newer-version one.");
 Add(logout, storageDir, profiles, issuer, clientId, scopes, port, allowHttp);
 logout.SetAction((parse, cancellationToken) => Run(async () =>
 {
@@ -148,9 +148,17 @@ static async Task<int> Run(Func<Task<int>> action, CancellationToken cancellatio
     catch (CliAuthException error)
     {
         Console.Error.WriteLine(JsonSerializer.Serialize(new { ErrorCode = error.ErrorCode.ToString(), error.ProviderErrorCode, error.Message, error.CorrelationId }));
-        if (error.ErrorCode is AuthErrorCode.StorageCorrupt or AuthErrorCode.UnsupportedSchema)
+        if (error.ErrorCode is AuthErrorCode.StorageCorrupt)
         {
-            Console.Error.WriteLine("The stored session cannot be used. Run logout for this profile, then login again.");
+            Console.Error.WriteLine("The stored session cannot be used. Run login again to replace it, or logout to remove it.");
+        }
+        else if (error.ErrorCode is AuthErrorCode.UnsupportedSchema)
+        {
+            Console.Error.WriteLine("The stored session was written by a newer version. Upgrade, or run logout to remove it.");
+        }
+        else if (error.ErrorCode is AuthErrorCode.StorageInsecure)
+        {
+            Console.Error.WriteLine("The storage directory is not private: use a local directory writable only by you (Unix: chmod 700).");
         }
         return error.ErrorCode switch
         {
@@ -159,7 +167,8 @@ static async Task<int> Run(Func<Task<int>> action, CancellationToken cancellatio
             AuthErrorCode.ReauthenticationRequired or AuthErrorCode.RefreshOutcomeUnknown => 3,
             AuthErrorCode.AccessDenied or AuthErrorCode.BrowserUnavailable or
                 AuthErrorCode.CallbackRejected or AuthErrorCode.LoginTimedOut => 4,
-            AuthErrorCode.StorageUnavailable or AuthErrorCode.StorageCorrupt or AuthErrorCode.UnsupportedSchema => 5,
+            AuthErrorCode.StorageUnavailable or AuthErrorCode.StorageCorrupt or AuthErrorCode.UnsupportedSchema or
+                AuthErrorCode.StorageInsecure => 5,
             AuthErrorCode.DiscoveryFailed or AuthErrorCode.NetworkFailure or AuthErrorCode.ProtocolFailure or
                 AuthErrorCode.TokenLifetimeTooShort => 6,
             AuthErrorCode.SessionBusy or AuthErrorCode.OperationSuperseded => 7,

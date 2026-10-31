@@ -12,7 +12,6 @@ namespace Bijecta.CliAuth.Storage.File;
 [DebuggerDisplay("FileTokenStore (plaintext)")]
 public sealed class FileTokenStore : ITokenStore, ISessionLockProvider
 {
-    private const UnixFileMode DirectoryMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
     private const UnixFileMode FileModePermissions = UnixFileMode.UserRead | UnixFileMode.UserWrite;
 
     private readonly Func<string, CancellationToken, Task>? _beforePublish;
@@ -59,6 +58,8 @@ public sealed class FileTokenStore : ITokenStore, ISessionLockProvider
         ArgumentNullException.ThrowIfNull(key);
         try
         {
+            if (!StorageLocation.EnsureTrustedDirectory(StorageDirectory, create: false)) { return null; }
+            StorageLocation.RejectLink(SessionPath(key));
             await using var stream = new FileStream(SessionPath(key), new FileStreamOptions
             {
                 Mode = FileMode.Open,
@@ -66,6 +67,8 @@ public sealed class FileTokenStore : ITokenStore, ISessionLockProvider
                 Share = FileShare.Read | FileShare.Delete,
                 Options = FileOptions.Asynchronous | FileOptions.SequentialScan
             });
+            // A file readable or writable by others may have been exposed or planted (ADR 0009).
+            StorageLocation.RequirePrivateFile(stream);
             if (stream.Length > SessionFileSerializer.MaxDocumentBytes)
             {
                 throw new CliAuthException(AuthErrorCode.StorageCorrupt);
@@ -107,14 +110,7 @@ public sealed class FileTokenStore : ITokenStore, ISessionLockProvider
         var published = false;
         try
         {
-            if (OperatingSystem.IsWindows())
-            {
-                Directory.CreateDirectory(StorageDirectory);
-            }
-            else
-            {
-                Directory.CreateDirectory(StorageDirectory, DirectoryMode);
-            }
+            StorageLocation.EnsureTrustedDirectory(StorageDirectory, create: true);
             temporaryPath = Path.Combine(StorageDirectory, $".{key.Value}.{Guid.NewGuid():N}.tmp");
             var options = new FileStreamOptions
             {
@@ -146,6 +142,8 @@ public sealed class FileTokenStore : ITokenStore, ISessionLockProvider
             }
             published = true;
             // Do not report cancellation after a successful publication as though no commit occurred.
+            // Under the lease no cooperating writer is staging this key, so older staging files are orphans.
+            DeleteOrphanedStagingFiles(key);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -166,6 +164,7 @@ public sealed class FileTokenStore : ITokenStore, ISessionLockProvider
     /// <remarks>
     /// Missing records succeed without creating anything. Unreadable records are removed too. Removal of the
     /// record is the commit boundary; orphan cleanup afterwards is best effort. The lock file is retained.
+    /// Location checks are skipped: removing our record is always safe, even from an insecure directory.
     /// </remarks>
     public ValueTask DeleteAsync(SessionKey key, CancellationToken ct = default)
     {

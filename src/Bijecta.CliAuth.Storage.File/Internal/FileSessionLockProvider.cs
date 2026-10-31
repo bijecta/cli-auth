@@ -21,13 +21,9 @@ internal sealed class FileSessionLockProvider(string directory, TimeProvider tim
         FileStream? candidate = null;
         try
         {
-            if (OperatingSystem.IsWindows()) { Directory.CreateDirectory(directory); }
-            else
-            {
-                Directory.CreateDirectory(directory,
-                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-            }
+            StorageLocation.EnsureTrustedDirectory(directory, create: true);
             var path = Path.Combine(directory, key.Value + ".lock");
+            StorageLocation.RejectLink(path);
             while (true)
             {
                 ct.ThrowIfCancellationRequested();

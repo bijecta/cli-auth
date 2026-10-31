@@ -87,23 +87,48 @@ public sealed class PlaintextFileCoordinatorTests
     }
 
     [Fact]
-    public async Task CorruptRecordBlocksUseAndLoginUntilExplicitLogout()
+    public async Task CorruptRecordBlocksUseButExplicitLoginReplacesIt()
     {
         using var location = new TestDirectory();
-        Directory.CreateDirectory(location.Path);
-        var sessionFile = Path.Combine(location.Path, SessionKey.ForProfile(Plaintext()).Value + ".json");
-        await File.WriteAllTextAsync(sessionFile, "{", Ct);
+        var sessionFile = await WriteRecordAsync(location, "{");
         var auth = Run(location);
 
-        await AssertCorrupt(() => auth.GetStatusAsync("work", Ct));
-        await AssertCorrupt(() => auth.GetAccessTokenAsync("work", Ct));
-        await AssertCorrupt(() => auth.LoginAsync("work", new LoginOptions(), Ct));
+        await AssertCode(AuthErrorCode.StorageCorrupt, () => auth.GetStatusAsync("work", Ct));
+        await AssertCode(AuthErrorCode.StorageCorrupt, () => auth.GetAccessTokenAsync("work", Ct));
         Assert.Equal(AuthErrorCode.StorageCorrupt, Assert.Single(await auth.ListSessionsAsync(Ct)).Error);
         Assert.Equal("{", await File.ReadAllTextAsync(sessionFile, Ct));
 
+        // ADR 0009: login is explicit and gets a fresh epoch, so it may replace a still-corrupt record.
+        await auth.LoginAsync("work", new LoginOptions(), Ct);
+        Assert.Equal(SessionStatusKind.Available, (await Run(location).GetStatusAsync("work", Ct)).Kind);
+    }
+
+    [Fact]
+    public async Task NewerSchemaRecordBlocksLoginUntilExplicitLogout()
+    {
+        using var location = new TestDirectory();
+        var sessionFile = await WriteRecordAsync(location, "{\"schemaVersion\":99}");
+        var auth = Run(location);
+        await AssertCode(AuthErrorCode.UnsupportedSchema, () => auth.LoginAsync("work", new LoginOptions(), Ct));
+        Assert.Equal("{\"schemaVersion\":99}", await File.ReadAllTextAsync(sessionFile, Ct));
         Assert.True((await auth.LogoutAsync("work", new LogoutOptions(), Ct)).LocalSessionRemoved);
         await auth.LoginAsync("work", new LoginOptions(), Ct);
         Assert.Equal(SessionStatusKind.Available, (await auth.GetStatusAsync("work", Ct)).Kind);
+    }
+
+    // Writes a synthetic record the way the store would: a privately created directory and an owner-only file.
+    private static async Task<string> WriteRecordAsync(TestDirectory location, string content)
+    {
+        _ = await Run(location).ListSessionsAsync(Ct);
+        var path = Path.Combine(location.Path, SessionKey.ForProfile(Plaintext()).Value + ".json");
+        var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
+        if (!OperatingSystem.IsWindows()) { options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite; }
+        await using (var stream = new FileStream(path, options))
+        await using (var writer = new StreamWriter(stream))
+        {
+            await writer.WriteAsync(content.AsMemory(), Ct);
+        }
+        return path;
     }
 
     [Fact]
@@ -131,8 +156,8 @@ public sealed class PlaintextFileCoordinatorTests
     private static void AssertConfiguration(Action create) =>
         Assert.Equal(AuthErrorCode.InvalidConfiguration, Assert.Throws<CliAuthException>(create).ErrorCode);
 
-    private static async Task AssertCorrupt(Func<Task> operation) =>
-        Assert.Equal(AuthErrorCode.StorageCorrupt, (await Assert.ThrowsAsync<CliAuthException>(operation)).ErrorCode);
+    private static async Task AssertCode(AuthErrorCode expected, Func<Task> operation) =>
+        Assert.Equal(expected, (await Assert.ThrowsAsync<CliAuthException>(operation)).ErrorCode);
 
     private sealed class TestDirectory : IDisposable
     {
