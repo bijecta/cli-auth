@@ -1,8 +1,17 @@
 name: CI
 
+# Pull requests run once via pull_request; push runs only for main (post-merge).
+# Other branches can be run on demand with workflow_dispatch.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# A newer push to the same pull request cancels its superseded run; main runs are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
