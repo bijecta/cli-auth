@@ -160,7 +160,11 @@ write). Core and Storage.File grant the helper internal access, as they do the u
 storage test projects. Release build zero warnings; 400 solution tests passed on macOS
 (4 Windows-only skipped); the process suite passed 15 consecutive runs; temporarily
 removing the coordinator's epoch check or the store's orphan cleanup failed 4 of the 6
-tests. Encryption/native secret stores, key rotation, optional biometrics, and universal
+tests. Review hardening of the harness: the parent drains each child's stderr from
+start (no pipe-full stall) and includes it when a child exits unexpectedly (an injected
+child crash reported its stack trace), and the child's watchdog now ends the process,
+since blocked console reads ignore cancellation; 400 solution tests and 5 further
+process-suite runs passed. Encryption/native secret stores, key rotation, optional biometrics, and universal
 crash/power-loss guarantees are outside this milestone.
 
 ## References

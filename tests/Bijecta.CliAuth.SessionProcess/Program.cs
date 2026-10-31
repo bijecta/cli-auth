@@ -6,6 +6,12 @@ using Bijecta.CliAuth.Storage.File;
 // no raw paths are emitted.
 using var watchdog = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 var ct = watchdog.Token;
+// Console.In reads ignore cancellation once blocked, so the watchdog ends the process rather than relying on ct.
+ct.Register(() =>
+{
+    Console.Error.WriteLine("Session helper watchdog expired.");
+    Environment.Exit(2);
+});
 var stageBeforePublish = false;
 var store = new FileTokenStore(args[0], async (_, token) =>
 {

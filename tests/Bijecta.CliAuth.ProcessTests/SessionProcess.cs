@@ -12,6 +12,7 @@ internal sealed class SessionProcess : IAsyncDisposable
     internal static SessionKey Key { get; } = SessionKey.ForProfile(Profile);
 
     private readonly Process _process;
+    private readonly Task<string> _errorOutput;
     private readonly CancellationTokenSource _deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
     private bool _finished;
 
@@ -29,6 +30,8 @@ internal sealed class SessionProcess : IAsyncDisposable
         start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "SessionProcess", "Bijecta.CliAuth.SessionProcess.dll"));
         start.ArgumentList.Add(directory);
         _process = Process.Start(start) ?? throw new InvalidOperationException("Could not start session helper.");
+        // Drain stderr from the start: a full pipe would block the child, and a crash must report its output.
+        _errorOutput = _process.StandardError.ReadToEndAsync();
     }
 
     internal static async Task<SessionProcess> StartAsync(string directory)
@@ -45,7 +48,8 @@ internal sealed class SessionProcess : IAsyncDisposable
     internal Task SendAsync(string command) => _process.StandardInput.WriteLineAsync(command.AsMemory(), _deadline.Token);
 
     internal async Task<string> ReadAsync() =>
-        await _process.StandardOutput.ReadLineAsync(_deadline.Token) ?? throw new InvalidOperationException("The session helper exited.");
+        await _process.StandardOutput.ReadLineAsync(_deadline.Token) ??
+        throw new InvalidOperationException($"The session helper exited. Error output: {await ErrorOutputAsync()}");
 
     internal async Task<string> RunAsync(string command)
     {
@@ -58,8 +62,8 @@ internal sealed class SessionProcess : IAsyncDisposable
     {
         _process.StandardInput.Close();
         await _process.WaitForExitAsync(_deadline.Token);
+        Assert.Equal("", await _errorOutput.WaitAsync(_deadline.Token));
         Assert.Equal(0, _process.ExitCode);
-        Assert.Equal("", await _process.StandardError.ReadToEndAsync(_deadline.Token));
         _finished = true;
     }
 
@@ -82,8 +86,20 @@ internal sealed class SessionProcess : IAsyncDisposable
                 using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 await _process.WaitForExitAsync(cleanup.Token);
             }
+            // Observe the stderr read before disposing the process closes its stream.
+            await ErrorOutputAsync();
         }
         finally { _process.Dispose(); _deadline.Dispose(); }
+    }
+
+    // Bounded independently of the test deadline, which may already have expired.
+    private async Task<string> ErrorOutputAsync()
+    {
+        try { return await _errorOutput.WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (Exception error) when (error is TimeoutException or IOException or ObjectDisposedException)
+        {
+            return $"<unavailable: {error.GetType().Name}>";
+        }
     }
 }
 
