@@ -9,6 +9,16 @@
     <Authors>Bijecta.CliAuth contributors</Authors>
     <PackageTags>cli;oauth;oidc;authentication</PackageTags>
   </PropertyGroup>
+  <!-- Native AOT is a supported consumer target: trim, AOT, and single-file analyzer warnings fail the build.
+       Equivalent to IsAotCompatible, which would also add an SDK-versioned ILLink package to the lock files. -->
+  <PropertyGroup>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="IsTrimmable" Value="True" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="/" Visible="false" />
   </ItemGroup>
