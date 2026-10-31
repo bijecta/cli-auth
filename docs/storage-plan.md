@@ -6,27 +6,34 @@ Architecture decisions belong in ADRs; this file records implementation status.
 
 ## Resume here
 
-Last updated: 2026-10-30.
+Last updated: 2026-10-31.
 
-- Main includes step 2 (cross-platform session leases, `bff76ee`, hosted matrix
-  run 41135383924 green on Ubuntu/Windows/macOS). Main is protected: changes land
-  through PRs with all CI checks green. Parent design documents stay outside Git.
-- Step 3 decision: after reflection and comparison with other CLIs (gh, Claude
-  Code, Codex, AWS, gcloud, Azure), the maintainer chose logout by record removal
-  over ADR 0005's tombstones. ADR 0007 records it; per-session epochs fence work
-  that started from an existing session, and a login started while signed out is
-  deliberately not fenced.
-- Step 3 (`c69b08a`, PR #1, hosted matrix green in runs 41143565907/41143591372): Core's
-  `DeleteAsync` contract and `MemoryTokenStore` remove records;
-  `FileTokenStore.DeleteAsync` deletes `<sessionKey>.json` without parsing it, then
-  this key's orphaned staging files best effort; lock files are retained.
-- Verification checkpoint: Release build zero warnings/errors; 358 solution tests
-  passed on macOS; format verification and git diff --check passed.
-- Next action: merge PR #1 with the maintainer's approval, then start step 4 (plaintext persistence mode and
-  `ITokenStore` integration) with a design discussion first.
+- Main includes steps 2 and 3: cross-platform session leases (`bff76ee`) and logout
+  by record removal (ADR 0007, merged from PR #1 as `c31dcbb`/`3ac9db9`), each with a
+  green Ubuntu/Windows/macOS hosted matrix. Main is protected: changes land through
+  PRs with all CI checks green. Parent design documents stay outside Git.
+- Step 4 decisions (ADR 0008, agreed with the maintainer 2026-10-31): append
+  `PersistenceMode.Plaintext` (never renamed: it is part of session keys); explicit
+  two-sided selection with no acknowledgment flag or `IsPlaintext`; `Protected`
+  stays the default; host-owned directory with documented locations and no helper;
+  plaintext warnings are the host's job; step 4 precedes step 5 hardening; add
+  `ListSessionsAsync` with per-profile errors; moving off plaintext deletes the old
+  record by its key. DI/configuration (Extensions, M5) and a reusable commands
+  package are later layers.
+- Step 4 implementation on branch `feat/storage-plaintext-integration`:
+  `FileTokenStore : ITokenStore`, `ProfileSessionStatus`, `ListSessionsAsync`,
+  coordinator tests against a real FileTokenStore, and sample `login`/`status`/
+  `list`/`logout` commands with `--storage-dir`.
+- Verification checkpoint: Release build zero warnings/errors; 368 solution tests
+  passed on macOS; sample status/list/logout exercised against a temp directory,
+  including corrupt records (listed per profile, recovered by logout). Sample login
+  against a real provider was not exercised locally.
+- Next action: open the step 4 PR, confirm the hosted matrix, merge with the
+  maintainer's approval, then discuss step 5 (filesystem protections, including
+  whether login may replace a corrupt record).
 - Deferred limits: network shares are unsupported; automatic filesystem detection,
   symlink/descriptor checks, and ownership hardening remain step 5. Lease-required
-  mutation APIs remain a step-4 contract question. Initial Linux import targets glibc.
+  mutation APIs remain an open contract question (ADR 0008), revisited with refresh. Initial Linux import targets glibc.
 
 ## Status rules
 
@@ -99,24 +106,31 @@ assert that logout supersedes a login started while signed in and that a login
 started while signed out commits (the accepted ADR 0007 trade-off). Parent SPECS,
 ARCHITECTURE, and IMPLEMENTATION_PLAN were updated to match.
 
-### 4. Complete the storage contract and authentication integration
+### 4. Complete the storage contract and authentication integration — implementation in progress
 
-- [ ] Add an explicit plaintext persistence mode; never label this store Protected.
-- [ ] Make `FileTokenStore` implement the complete `ITokenStore` contract and expose
+- [x] Add an explicit plaintext persistence mode; never label this store Protected.
+- [x] Make `FileTokenStore` implement the complete `ITokenStore` contract and expose
   its canonical matching `ISessionLockProvider` domain.
-- [ ] Integrate through existing Core injection without a Core dependency on Storage.File.
-- [ ] Test policy validation and coordinator behavior with persistent sessions.
-- [ ] Document explicit selection and host-owned directory configuration; no silent fallback.
+- [x] Integrate through existing Core injection without a Core dependency on Storage.File.
+- [x] Test policy validation and coordinator behavior with persistent sessions.
+- [x] Document explicit selection and host-owned directory configuration; no silent fallback.
+- [x] Add `ListSessionsAsync` so hosts can show which profiles have sessions (ADR 0008).
+- [x] Add persistent sample commands (`login`, `status`, `list`, `logout`).
+- [ ] Confirm the suite on the Ubuntu/Windows/macOS hosted matrix.
 
-Evidence: not started. `FileTokenStore` currently exposes reads/writes and matching leases, and
-deliberately does not implement `ITokenStore` yet.
+Evidence: In progress, hosted matrix pending. [ADR 0008](decisions/0008-plaintext-persistence-integration.md).
+Release build zero warnings/errors; 368 solution tests passed on macOS, including
+coordinator tests that run the fake protocol against a real FileTokenStore (a new
+authenticator per simulated CLI run), listing tests, and corrupt-record recovery.
+Unit tests reference Storage.File; Core does not.
 
 ### 5. Filesystem protections and recovery
 
 - [ ] Review and define the supported local-filesystem/path trust boundary.
 - [ ] Verify restrictive permissions and define treatment of existing directories,
   Windows ACLs, ownership, symlinks, and path substitution.
-- [ ] Define safe, explicit corrupt-file recovery/reset behavior.
+- [ ] Define safe, explicit corrupt-file recovery/reset behavior, including whether
+  explicit login may replace a corrupt record instead of requiring logout first.
 - [ ] Define abandoned temporary-file handling without racing an active writer or
   deleting lock identities. Document any intentionally deferred automatic cleanup.
 - [ ] Test supported protections and safe error reporting on all target platforms.

@@ -5,6 +5,7 @@ namespace Bijecta.CliAuth.Core;
 internal sealed class SessionCoordinator
 {
     private readonly FrozenDictionary<string, Registration> _profiles;
+    private readonly Registration[] _profileOrder;
     private readonly ITokenStore _store;
     private readonly ISessionLockProvider _locks;
     private readonly IAuthenticationProtocol _protocol;
@@ -39,13 +40,16 @@ internal sealed class SessionCoordinator
         }
 
         var registrations = new Dictionary<string, Registration>(StringComparer.Ordinal);
+        var order = new List<Registration>();
         foreach (var profile in profiles)
         {
-            if (profile is null || profile.Persistence != persistenceMode ||
-                !registrations.TryAdd(profile.ProfileName, new Registration(profile)))
+            var registration = profile is null ? null : new Registration(profile);
+            if (registration is null || profile!.Persistence != persistenceMode ||
+                !registrations.TryAdd(profile.ProfileName, registration))
             {
                 throw new CliAuthException(AuthErrorCode.InvalidConfiguration);
             }
+            order.Add(registration);
         }
         if (registrations.Count == 0)
         {
@@ -57,6 +61,7 @@ internal sealed class SessionCoordinator
             throw new CliAuthException(AuthErrorCode.InvalidConfiguration);
         }
         _profiles = registrations.ToFrozenDictionary(StringComparer.Ordinal);
+        _profileOrder = [.. order];
         _store = tokenStore;
         _locks = sessionLocks;
         _protocol = protocol;
@@ -110,7 +115,31 @@ internal sealed class SessionCoordinator
     internal async Task<SessionStatus> GetStatusAsync(string profile, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        var registration = Resolve(profile);
+        return await StatusAsync(Resolve(profile), ct).ConfigureAwait(false);
+    }
+
+    internal async Task<IReadOnlyList<ProfileSessionStatus>> ListSessionsAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var entries = new List<ProfileSessionStatus>(_profileOrder.Length);
+        foreach (var registration in _profileOrder)
+        {
+            try
+            {
+                entries.Add(new ProfileSessionStatus(registration.Profile.ProfileName,
+                    await StatusAsync(registration, ct).ConfigureAwait(false)));
+            }
+            catch (CliAuthException error)
+            {
+                // One unreadable or busy profile must not hide the others.
+                entries.Add(new ProfileSessionStatus(registration.Profile.ProfileName, error.ErrorCode));
+            }
+        }
+        return entries.AsReadOnly();
+    }
+
+    private async Task<SessionStatus> StatusAsync(Registration registration, CancellationToken ct)
+    {
         await using var lease = await AcquireAsync(registration.Key, ct).ConfigureAwait(false);
         var current = await ReadAsync(registration, ct).ConfigureAwait(false);
         return SessionStatusEvaluator.Evaluate(current, _time, registration.Profile.ExpiryMargin);

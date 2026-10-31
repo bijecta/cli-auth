@@ -24,8 +24,31 @@ var status = await auth.GetStatusAsync("work", ct);
 var logout = await auth.LogoutAsync("work", new LogoutOptions(), ct);
 ```
 
+Persistent plaintext storage is selected the same way, explicitly on both sides:
+
+```csharp
+var profile = new OidcProfile("example.my-cli", "work", new Uri("https://id.example.test"),
+    "my-cli", ["api.read"], persistence: PersistenceMode.Plaintext);
+var store = new FileTokenStore(storageDirectory); // host-owned absolute directory
+ICliAuthenticator auth = new CliAuthenticator([profile], store);
+
+foreach (var entry in await auth.ListSessionsAsync(ct))
+{
+    // entry.Status (Kind, ExpiresAtUtc, Subject, Issuer) or entry.Error
+}
+```
+
+Tokens are unencrypted; tell users so in your CLI. A profile requiring MemoryOnly or
+Protected is rejected with FileTokenStore, and a Plaintext profile is rejected with
+MemoryTokenStore. Choose a per-user directory such as `$XDG_STATE_HOME/<app>` or
+`~/.local/state/<app>` (Linux), `~/Library/Application Support/<app>` (macOS), or
+`%LOCALAPPDATA%\<app>` (Windows); no default-location helper is provided yet.
+To move a profile off Plaintext later, delete its old record with
+`SessionKey.ForProfile(plaintextProfile)` and `FileTokenStore.DeleteAsync`
+([ADR 0008](../decisions/0008-plaintext-persistence-integration.md)).
+
 `sessionLocks` may be omitted when the store implements ISessionLockProvider, as
-MemoryTokenStore does. If that intrinsic provider exists, a conflicting explicit
+MemoryTokenStore and FileTokenStore do. If that intrinsic provider exists, a conflicting explicit
 provider is rejected. Other custom stores must receive an explicit matching lock
 provider. Instances sharing a backend must share its coordination domain.
 

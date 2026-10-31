@@ -42,6 +42,10 @@ public sealed class CliAuthenticator : ICliAuthenticator
         _coordinator.GetStatusAsync(profile, cancellationToken);
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<ProfileSessionStatus>> ListSessionsAsync(CancellationToken cancellationToken = default) =>
+        _coordinator.ListSessionsAsync(cancellationToken);
+
+    /// <inheritdoc />
     public Task<LogoutResult> LogoutAsync(string profile, LogoutOptions options, CancellationToken cancellationToken = default) =>
         _coordinator.LogoutAsync(profile, options, cancellationToken);
 }

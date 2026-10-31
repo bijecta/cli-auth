@@ -7,6 +7,7 @@
     <PackageReference Include="System.CommandLine" />
     <ProjectReference Include="../../src/Bijecta.CliAuth.Core/Bijecta.CliAuth.Core.csproj" />
     <ProjectReference Include="../../src/Bijecta.CliAuth.Extensions/Bijecta.CliAuth.Extensions.csproj" />
-    <!-- Platform storage is explicitly selected when persistence is implemented. -->
+    <!-- Plaintext file storage is explicitly selected by the persistent commands. -->
+    <ProjectReference Include="../../src/Bijecta.CliAuth.Storage.File/Bijecta.CliAuth.Storage.File.csproj" />
   </ItemGroup>
 </Project>

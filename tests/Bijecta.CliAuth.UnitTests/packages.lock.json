@@ -187,6 +187,12 @@
           "System.IdentityModel.Tokens.Jwt": "[8.23.0, )"
         }
       },
+      "bijecta.cliauth.storage.file": {
+        "type": "Project",
+        "dependencies": {
+          "Bijecta.CliAuth.Core": "[0.1.0-alpha.1, )"
+        }
+      },
       "Duende.IdentityModel": {
         "type": "CentralTransitive",
         "requested": "[8.1.0, )",
