@@ -9,14 +9,10 @@
     <Authors>Bijecta.CliAuth contributors</Authors>
     <PackageTags>cli;oauth;oidc;authentication</PackageTags>
   </PropertyGroup>
-  <!-- Native AOT is a supported consumer target: trim, AOT, and single-file analyzer warnings fail the build.
-       Equivalent to IsAotCompatible, which would also add an SDK-versioned ILLink package to the lock files. -->
-  <PropertyGroup>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-    <EnableAotAnalyzer>true</EnableAotAnalyzer>
-    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
-  </PropertyGroup>
-  <ItemGroup>
+  <!-- Native AOT is a supported consumer target. IsAotCompatible is not set here: its analyzers add an
+       implicit ILLink package whose version follows the installed SDK patch, which breaks locked restore.
+       CI's native-aot job builds every library with -p:IsAotCompatible=true instead (warnings are errors). -->
+  <ItemGroup Condition="'$(IsAotCompatible)' != 'true' and '$(IsTrimmable)' != 'true'">
     <AssemblyMetadata Include="IsTrimmable" Value="True" />
   </ItemGroup>
   <ItemGroup>
