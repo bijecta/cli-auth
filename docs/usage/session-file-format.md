@@ -5,11 +5,12 @@ The first storage slice implements `StoredSession` to/from compact UTF-8 JSON in
 this package owns file-format details. `CliAuthenticator` will continue to accept
 an `ITokenStore` supplied by the host.
 
-The serializer is internal; the public `FileTokenStore` now uses it for disk reads,
-staged replacement writes, and record removal. The class is intentionally not yet an
-`ITokenStore`, so it cannot be injected into the authenticator. Matching session
-leases are available through ISessionLockProvider; persistence-policy integration
-follows separately.
+The serializer is internal; the public `FileTokenStore` uses it for disk reads,
+staged replacement writes, and record removal. `FileTokenStore` implements
+`ITokenStore` with `PersistenceMode.Plaintext` and `ISessionLockProvider`, so a host
+passes it to `CliAuthenticator` with Plaintext profiles
+([ADR 0008](../decisions/0008-plaintext-persistence-integration.md)). The examples
+below use the store directly; through the authenticator, leases are handled for you.
 
 ## Disk usage
 

@@ -32,11 +32,19 @@ protected backends will be implemented in later features. The store declares its
 policy through the read-only ITokenStore.PersistenceMode property, and authenticator
 construction rejects profiles with a different policy.
 
-[ADR 0005](../decisions/0005-plaintext-persistence-first.md) accepts a future, explicitly
-selected plaintext file backend. A distinct plaintext policy must be added before
-that backend can be used. The current enum/default remains unchanged; the basic standalone FileTokenStore
-now reads/writes files but does not yet implement ITokenStore. Plaintext must never
-masquerade as Protected. See [file storage](session-file-format.md).
+`PersistenceMode.Plaintext` selects unencrypted local persistence
+([ADR 0005](../decisions/0005-plaintext-persistence-first.md),
+[ADR 0008](../decisions/0008-plaintext-persistence-integration.md)). `FileTokenStore`
+implements ITokenStore and declares it; profiles must require it explicitly. The
+default stays Protected, so an unchosen policy fails at construction instead of
+writing plaintext. Plaintext never masquerades as Protected. The value is part of
+session-key derivation and is never renamed. See [file storage](session-file-format.md).
+
+`ListSessionsAsync` returns one `ProfileSessionStatus` per configured profile, in
+configuration order: the same credential-free SessionStatus as GetStatusAsync, or
+the AuthErrorCode (for example StorageCorrupt or SessionBusy) that prevented reading
+that profile. One profile's failure does not fail the list. It performs no network
+I/O and propagates cancellation.
 
 The agreed composition model supports multiple named profiles with one shared
 storage/locking setup per authenticator. All profiles must match its persistence

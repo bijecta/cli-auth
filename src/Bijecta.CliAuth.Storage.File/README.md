@@ -45,8 +45,9 @@ See [Windows rename semantics](https://learn.microsoft.com/en-us/windows-hardwar
 [File.Move](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.move)
 and the [format/atomicity walkthrough](../../docs/usage/session-file-format.md).
 
-This incremental class still does not implement ITokenStore: explicit
-plaintext-policy integration remains a later step. Hold the matching lease
+`FileTokenStore` implements `ITokenStore` (declaring `PersistenceMode.Plaintext`)
+and `ISessionLockProvider`. Pass it to `CliAuthenticator` with profiles requiring
+Plaintext; the authenticator holds leases for you. Direct callers hold the matching lease
 across the complete read/check/write operation to prevent lost updates.
 An explicit write does not inspect previous content for corruption.
 
@@ -114,6 +115,22 @@ stdout/stdin readiness/release handshakes, controlled time, killed holders,
 concurrent disposal, and disabled-implicit-locking children in both directions.
 Hosted success must be established by actual CI results, not inferred
 from the local macOS run. These tests do not simulate physical power failure.
+
+## Use with CliAuthenticator
+
+```csharp
+var profile = new OidcProfile("example.my-cli", "work", issuer, clientId, scopes,
+    persistence: PersistenceMode.Plaintext);
+var auth = new CliAuthenticator([profile], new FileTokenStore(storageDirectory));
+var sessions = await auth.ListSessionsAsync(cancellationToken);
+```
+
+Selection is explicit on both sides; any persistence mismatch is InvalidConfiguration.
+Tokens are unencrypted, so tell users. Use a per-user directory such as
+`~/.local/state/<app>`, `~/Library/Application Support/<app>`, or
+`%LOCALAPPDATA%\<app>`. Filesystem hardening (existing-directory permissions,
+Windows ACLs, symlink rejection) is storage-plan step 5. See
+[ADR 0008](../../docs/decisions/0008-plaintext-persistence-integration.md).
 
 ## Logout
 

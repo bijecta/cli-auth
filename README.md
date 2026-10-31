@@ -14,7 +14,7 @@ and DI registration remain unfinished.**
 | Package | Intended responsibility |
 |---|---|
 | Bijecta.CliAuth.Core | Authentication, flow adapters, contracts, session coordination, memory storage |
-| Bijecta.CliAuth.Storage.File | Compact JSON, staged replacement, and logout, and matching session leases; policy integration pending |
+| Bijecta.CliAuth.Storage.File | Explicitly selected plaintext `ITokenStore`: compact JSON, atomic replacement, logout, and matching session leases; filesystem hardening pending |
 | Bijecta.CliAuth.Storage.MacOS | Future macOS protected storage; design deferred |
 | Bijecta.CliAuth.Storage.Linux | Future Linux protected storage; design deferred |
 | Bijecta.CliAuth.Storage.Windows | Future Windows protected storage; design deferred |
@@ -56,7 +56,10 @@ Browser/device login, local status, usable cached-token acquisition, and logout 
 the public authenticator. See the [browser walkthrough](docs/usage/browser-login.md)
 and [device walkthrough](docs/usage/device-login.md), plus the
 [Keycloak development fixture](samples/keycloak/README.md). Missing selected provider
-capabilities fail explicitly without switching flows. The sample uses memory explicitly.
+capabilities fail explicitly without switching flows. The sample's `demo` command uses
+memory; its `login`, `status`, `list`, and `logout` commands persist sessions in
+plaintext files under an explicit `--storage-dir`. `ListSessionsAsync` reports every
+configured profile's status.
 
 ## Implementation order
 

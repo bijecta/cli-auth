@@ -8,5 +8,7 @@
     <PackageReference Include="xunit.v3.mtp-v2" PrivateAssets="all" />
     <Using Include="Xunit" />
     <ProjectReference Include="../../src/Bijecta.CliAuth.Core/Bijecta.CliAuth.Core.csproj" />
+    <!-- Coordinator tests also run against the real plaintext file store; Core itself never references it. -->
+    <ProjectReference Include="../../src/Bijecta.CliAuth.Storage.File/Bijecta.CliAuth.Storage.File.csproj" />
   </ItemGroup>
 </Project>

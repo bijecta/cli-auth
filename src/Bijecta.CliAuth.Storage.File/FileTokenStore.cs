@@ -3,14 +3,14 @@ using Bijecta.CliAuth.Core;
 
 namespace Bijecta.CliAuth.Storage.File;
 
-/// <summary>Plaintext session-file reads, staged replacement writes, record removal, and matching local session leases.</summary>
+/// <summary>An explicitly selected plaintext session store with matching local session leases.</summary>
 /// <remarks>
-/// This incremental implementation does not yet implement ITokenStore: persistence policy integration
-/// remains a later step. Callers hold a matching lease across compound operations.
+/// Pass it to CliAuthenticator with profiles requiring <see cref="PersistenceMode.Plaintext"/>. Credentials are
+/// stored unencrypted. Direct callers hold a matching lease across compound operations.
 /// Replacement and locking target supported stable local filesystems, without full power-loss durability.
 /// </remarks>
 [DebuggerDisplay("FileTokenStore (plaintext)")]
-public sealed class FileTokenStore : ISessionLockProvider
+public sealed class FileTokenStore : ITokenStore, ISessionLockProvider
 {
     private const UnixFileMode DirectoryMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
     private const UnixFileMode FileModePermissions = UnixFileMode.UserRead | UnixFileMode.UserWrite;
@@ -45,6 +45,9 @@ public sealed class FileTokenStore : ISessionLockProvider
     /// <remarks>Hold this lease across compound reads and mutations. Lock files are retained after release.</remarks>
     public ValueTask<IAsyncDisposable> AcquireAsync(SessionKey key, TimeSpan timeout, CancellationToken ct) =>
         _locks.AcquireAsync(key, timeout, ct);
+
+    /// <summary>Always Plaintext; declared without I/O.</summary>
+    public PersistenceMode PersistenceMode => PersistenceMode.Plaintext;
 
     /// <summary>The host-selected directory; individual file names are derived from session keys.</summary>
     public string StorageDirectory { get; }
