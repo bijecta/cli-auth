@@ -18,7 +18,8 @@ Last updated: 2026-10-31.
   maintainer's approval.
 - Active: storage step 6 file tests, pulled ahead of refresh at the maintainer's
   request, on branch `test/storage-process-races`. New `ProcessTests` suite (6
-  cross-process tests) passes locally. Next action: open the PR and confirm the
+  cross-process tests) passes locally, including review fixes to the harness's child
+  diagnostics and watchdog (not yet committed). Next action: commit those fixes, open the PR, and confirm the
   suite on the hosted Ubuntu/Windows/macOS matrix, especially the kill test on Windows.
 - Then: milestone 1 (refresh).
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
