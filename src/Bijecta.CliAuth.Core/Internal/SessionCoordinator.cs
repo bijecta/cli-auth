@@ -81,7 +81,7 @@ internal sealed class SessionCoordinator
         bool capturedCorrupt;
         await using (var lease = await AcquireAsync(registration.Key, ct).ConfigureAwait(false))
         {
-            // ADR 0009: explicit login may replace a corrupt record, but only one still corrupt at commit.
+            // ADR 0008: explicit login may replace a corrupt record, but only one still corrupt at commit.
             (var current, capturedCorrupt) = await ReadReplaceableAsync(registration, ct).ConfigureAwait(false);
             capturedEpoch = current?.Epoch ?? Guid.Empty;
         }

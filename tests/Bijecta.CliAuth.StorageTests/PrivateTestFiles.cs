@@ -2,7 +2,7 @@ using Bijecta.CliAuth.Storage.File;
 
 namespace Bijecta.CliAuth.StorageTests;
 
-// Synthetic records must satisfy the store's ADR 0009 location rules, or reads fail as StorageInsecure.
+// Synthetic records must satisfy the store's ADR 0008 location rules, or reads fail as StorageInsecure.
 internal static class PrivateTestFiles
 {
     // Created exactly as the store creates it: 0700 on Unix, a protected owner-only ACL on Windows.

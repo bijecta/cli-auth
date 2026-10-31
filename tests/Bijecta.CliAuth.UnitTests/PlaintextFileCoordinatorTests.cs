@@ -98,7 +98,7 @@ public sealed class PlaintextFileCoordinatorTests
         Assert.Equal(AuthErrorCode.StorageCorrupt, Assert.Single(await auth.ListSessionsAsync(Ct)).Error);
         Assert.Equal("{", await File.ReadAllTextAsync(sessionFile, Ct));
 
-        // ADR 0009: login is explicit and gets a fresh epoch, so it may replace a still-corrupt record.
+        // ADR 0008: login is explicit and gets a fresh epoch, so it may replace a still-corrupt record.
         await auth.LoginAsync("work", new LoginOptions(), Ct);
         Assert.Equal(SessionStatusKind.Available, (await Run(location).GetStatusAsync("work", Ct)).Kind);
     }

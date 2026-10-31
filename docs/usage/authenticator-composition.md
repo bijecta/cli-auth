@@ -45,7 +45,7 @@ MemoryTokenStore. Choose a per-user directory such as `$XDG_STATE_HOME/<app>` or
 `%LOCALAPPDATA%\<app>` (Windows); no default-location helper is provided yet. The
 directory must be private to the user (Unix: not writable by group or others), or
 operations fail with StorageInsecure
-([ADR 0009](../decisions/0009-file-store-protections.md)).
+([ADR 0008](../decisions/0008-plaintext-persistence-integration.md)).
 
 A corrupt record never yields a token: status and acquisition return StorageCorrupt.
 Explicit login replaces a record that is still corrupt when it commits; if a valid

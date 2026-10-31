@@ -67,7 +67,7 @@ public sealed class FileTokenStore : ITokenStore, ISessionLockProvider
                 Share = FileShare.Read | FileShare.Delete,
                 Options = FileOptions.Asynchronous | FileOptions.SequentialScan
             });
-            // A file readable or writable by others may have been exposed or planted (ADR 0009).
+            // A file readable or writable by others may have been exposed or planted (ADR 0008).
             StorageLocation.RequirePrivateFile(stream);
             if (stream.Length > SessionFileSerializer.MaxDocumentBytes)
             {

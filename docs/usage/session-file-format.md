@@ -82,7 +82,7 @@ directories/staged files request owner-only modes (0700/0600), and replacement k
 the staged file's mode.
 
 The store refuses locations that are not private to the current user, with
-StorageInsecure ([ADR 0009](../decisions/0009-file-store-protections.md)):
+StorageInsecure ([ADR 0008](../decisions/0008-plaintext-persistence-integration.md)):
 - Unix: a storage directory writable by group or others, or a session file with
   any group/other permission bits. A directory readable by others (`0755`) is allowed.
 - Windows: a directory or session file not owned by the current user (or

@@ -13,7 +13,8 @@ Last updated: 2026-10-31.
   and cross-platform session leases (ADR 0006), each verified on the hosted
   Ubuntu/Windows/macOS matrix. Main is protected: changes land through PRs with all
   CI checks green. CI runs once per PR. Parent design documents stay outside Git.
-- Step 5 decisions (ADR 0009, agreed with the maintainer 2026-10-31): refuse
+- Step 5 decisions (recorded as sections of ADR 0008 rather than a new ADR, at the
+  maintainer's request to keep ADRs few; agreed with the maintainer 2026-10-31): refuse
   locations not private to the user with new `StorageInsecure` (Unix: no group/other
   write on the directory, no group/other bits on session files; Windows: owner-only
   ACLs, protected ACL on new directories); reject symlinked session/lock files and
@@ -28,7 +29,7 @@ Last updated: 2026-10-31.
   maintainer's approval and plan step 6 (final process-race and package verification).
 - Deferred limits: network drives are refused when DriveInfo reports them, but
   unknown/FUSE filesystems are not detected; FIFO/special-file and race-free
-  native-open checks and root-user guarantees are out of scope (ADR 0009).
+  native-open checks and root-user guarantees are out of scope (ADR 0008).
   Lease-required mutation APIs remain an open contract question (ADR 0008),
   revisited with refresh. Initial Linux import targets glibc.
 
@@ -124,7 +125,7 @@ Unit tests reference Storage.File; Core does not.
 
 ### 5. Filesystem protections and recovery — implementation in progress
 
-- [x] Review and define the supported local-filesystem/path trust boundary (ADR 0009).
+- [x] Review and define the supported local-filesystem/path trust boundary (ADR 0008).
 - [x] Verify restrictive permissions and define treatment of existing directories,
   Windows ACLs, ownership, symlinks, and path substitution.
 - [x] Define safe, explicit corrupt-file recovery: explicit login replaces a record
@@ -133,7 +134,7 @@ Unit tests reference Storage.File; Core does not.
   each successful write and on logout; no global sweep; lock identities untouched.
 - [ ] Test supported protections and safe error reporting on all target platforms.
 
-Evidence: In progress, hosted matrix pending. [ADR 0009](decisions/0009-file-store-protections.md).
+Evidence: In progress, hosted matrix pending. [ADR 0008](decisions/0008-plaintext-persistence-integration.md).
 New `AuthErrorCode.StorageInsecure`. Release build zero warnings/errors; 394 solution
 tests passed on macOS with 4 Windows-only protection tests skipped there (they run on
 the Windows runner). Through CliAuthenticator an insecure directory blocks every
