@@ -4,10 +4,11 @@ Reusable .NET packages for developers adding browser PKCE and device login to th
 own CLI applications using an OIDC provider such as Keycloak or Okta.
 
 **Status: early development. Browser PKCE and device login, lazy discovery,
-ID-token validation, memory storage, and session coordination are implemented.
-Deterministic protocol tests and Keycloak integration coverage exercise both flows.
-Native launcher/process checks, refresh, file persistence, protected storage, HTTP integration,
-and DI registration remain unfinished.**
+ID-token validation, session coordination, memory storage, and explicitly selected
+plaintext file storage are implemented. Deterministic protocol tests and Keycloak
+integration coverage exercise both flows. Refresh, HTTP and DI integration, other
+providers, packaging, and protected storage remain unfinished; see the
+[roadmap](docs/ROADMAP.md).**
 
 ## Packages
 
@@ -61,20 +62,14 @@ memory; its `login`, `status`, `list`, and `logout` commands persist sessions in
 plaintext files under an explicit `--storage-dir`. `ListSessionsAsync` reports every
 configured profile's status.
 
-## Implementation order
+## Roadmap
 
-1. Core contracts, configuration validation, and memory storage (implemented foundation).
-2. Authenticator composition and session coordination (implemented with fake-protocol tests).
-3. Browser PKCE using the [accepted dependencies](docs/decisions/0003-protocol-dependency-selection.md) (implemented; live Keycloak happy path passed).
-4. Device login and Keycloak automation (implemented), remaining native launcher/process checks.
-5. Explicit plaintext file persistence: [compact JSON and basic read/write](docs/usage/session-file-format.md) implemented; staged replacement implemented; cross-process coordination and authenticator integration pending ([ADR 0005](docs/decisions/0005-plaintext-persistence-first.md)).
-6. Silent refresh, HTTP, and DI integration.
-7. Protected storage after a separate decision on native services, encryption, and key lifecycle.
+The [roadmap](docs/ROADMAP.md) lists the ordered milestones: an AOT guard, silent
+refresh, provider compatibility (Okta, Auth0, Entra ID, Google, IdentityServer),
+the HTTP/DI integration layer, a first preview release, and protected storage.
 
 Both login flows are part of the first usable preview. That preview may use explicitly
-selected plaintext persistence; protected storage is deferred. The plaintext backend
-is being implemented incrementally; basic file reads/writes work, while the sample
-and full authenticator backend remain memory-only. Workers, client credentials,
+selected plaintext persistence; protected storage is deferred. Workers, client credentials,
 and token exchange are outside scope. Dependency review, final license/author and
 repository metadata, security reporting setup, native backend tests, and release
 validation remain outstanding. Scaffold packages are not release artifacts.

@@ -1,32 +1,20 @@
 # File storage implementation plan
 
-This is the canonical checklist and handoff for the file-storage milestone.
-Update this file as part of the work, without waiting for the user to request it.
+This was the checklist and handoff for the file-storage milestone, now complete.
+Ongoing work is tracked in the [roadmap](ROADMAP.md).
 Architecture decisions belong in ADRs; this file records implementation status.
 
 ## Resume here
 
 Last updated: 2026-10-31.
 
-- Main includes steps 1–4: plaintext file persistence through CliAuthenticator
-  (ADR 0008, merged from PR #2 as `338088a`), logout by record removal (ADR 0007),
-  and cross-platform session leases (ADR 0006), each verified on the hosted
-  Ubuntu/Windows/macOS matrix. Main is protected: changes land through PRs with all
-  CI checks green. CI runs once per PR. Parent design documents stay outside Git.
-- Step 5 decisions (recorded as sections of ADR 0008 rather than a new ADR, at the
-  maintainer's request to keep ADRs few; agreed with the maintainer 2026-10-31): refuse
-  locations not private to the user with new `StorageInsecure` (Unix: no group/other
-  write on the directory, no group/other bits on session files; Windows: owner-only
-  ACLs, protected ACL on new directories); reject symlinked session/lock files and
-  network drives; validate a symlinked directory through its target; explicit login
-  replaces a still-corrupt record; clean this key's orphans after successful writes.
-- Step 5 implementation on branch `feat/storage-filesystem-protections`.
-- Verification checkpoint: Release build zero warnings/errors; 394 solution tests
-  passed on macOS (4 Windows-only skipped); sample exercised against a world-writable
-  directory (StorageInsecure, exit 5, fix-permissions hint).
-- Next action: open the step 5 PR and confirm the hosted matrix, especially the
-  Windows ACL tests and the Windows runner's temp-directory ACL; then merge with the
-  maintainer's approval and plan step 6 (final process-race and package verification).
+- Storage milestone complete for steps 1–5, all on main and verified on the hosted
+  Ubuntu/Windows/macOS matrix: plaintext persistence through CliAuthenticator with
+  session listing and private-location checks (ADR 0008), logout by record removal
+  (ADR 0007), and cross-platform session leases (ADR 0006).
+- Step 6 moved to the [roadmap](ROADMAP.md): its process-race items are part of
+  milestone 1 (refresh), and its package items part of milestone 4 (preview release).
+  This file is no longer the active handoff; see the roadmap's Current focus.
 - Deferred limits: network drives are refused when DriveInfo reports them, but
   unknown/FUSE filesystems are not detected; FIFO/special-file and race-free
   native-open checks and root-user guarantees are out of scope (ADR 0008).
@@ -116,14 +104,14 @@ ARCHITECTURE, and IMPLEMENTATION_PLAN were updated to match.
 - [x] Add persistent sample commands (`login`, `status`, `list`, `logout`).
 - [x] Confirm the suite on the Ubuntu/Windows/macOS hosted matrix.
 
-Evidence: `7e1ed51` (PR #2); hosted runs 41194606016 (push) and 41194609826 (pull
+Evidence: `338088a` (PR #2, branch commit `7e1ed51`); hosted runs 41194606016 (push) and 41194609826 (pull
 request) passed on Ubuntu, Windows, and macOS plus the Linux Keycloak job. [ADR 0008](decisions/0008-plaintext-persistence-integration.md).
 Release build zero warnings/errors; 368 solution tests passed on macOS, including
 coordinator tests that run the fake protocol against a real FileTokenStore (a new
 authenticator per simulated CLI run), listing tests, and corrupt-record recovery.
 Unit tests reference Storage.File; Core does not.
 
-### 5. Filesystem protections and recovery — implementation in progress
+### 5. Filesystem protections and recovery — complete
 
 - [x] Review and define the supported local-filesystem/path trust boundary (ADR 0008).
 - [x] Verify restrictive permissions and define treatment of existing directories,
@@ -132,15 +120,17 @@ Unit tests reference Storage.File; Core does not.
   still corrupt at commit; newer-schema records still block login.
 - [x] Define abandoned temporary-file handling: this key's orphans are removed after
   each successful write and on logout; no global sweep; lock identities untouched.
-- [ ] Test supported protections and safe error reporting on all target platforms.
+- [x] Test supported protections and safe error reporting on all target platforms.
 
-Evidence: In progress, hosted matrix pending. [ADR 0008](decisions/0008-plaintext-persistence-integration.md).
+Evidence: `fcced80` and `2c87263` (PR #3); hosted runs 41196482988 and 41197120302
+(pull request) and 41197271692 (push to main) passed on Ubuntu, Windows, and macOS,
+including the Windows ACL tests, plus the Linux Keycloak job. [ADR 0008](decisions/0008-plaintext-persistence-integration.md).
 New `AuthErrorCode.StorageInsecure`. Release build zero warnings/errors; 394 solution
 tests passed on macOS with 4 Windows-only protection tests skipped there (they run on
 the Windows runner). Through CliAuthenticator an insecure directory blocks every
 operation, including logout, until fixed; file-level problems still allow logout.
 
-### 6. Final process-race and package verification
+### 6. Final process-race and package verification — moved to the roadmap
 
 - [ ] Verify cross-process visibility and competing session updates.
 - [ ] Verify login versus logout and stale refresh/login publication through Core.
@@ -149,7 +139,9 @@ operation, including logout, until fixed; file-level problems still allow logout
 - [ ] Verify a clean consumer can use the packaged file store with explicit selection.
 - [ ] Update usage docs and implementation claims to match verified behavior.
 
-Evidence: not started. Encryption/native secret stores, key rotation, optional
+Moved on 2026-10-31: the process-race items belong to roadmap milestone 1 (refresh)
+and the package items to milestone 4 (preview release); see [ROADMAP.md](ROADMAP.md).
+Encryption/native secret stores, key rotation, optional
 biometrics, and universal crash/power-loss guarantees are outside this milestone.
 
 ## References
