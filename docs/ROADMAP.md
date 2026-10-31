@@ -13,15 +13,16 @@ Last updated: 2026-10-31.
   memory storage, and plaintext file storage with cross-process leases, logout by
   record removal, session listing, and private-location checks
   ([storage plan](storage-plan.md), ADRs 0004–0008).
-- Done: milestone 0 (AOT guard), merged from PR #5. Its three `Native AOT publish
-  and smoke` jobs are not yet required checks on main; adding them needs the
-  maintainer's approval.
-- Active: storage step 6 file tests, pulled ahead of refresh at the maintainer's
-  request, on branch `test/storage-process-races`. New `ProcessTests` suite (6
-  cross-process tests) passes locally, including review fixes to the harness's child
-  diagnostics and watchdog. Next action: confirm the suite on the hosted
-  Ubuntu/Windows/macOS matrix, especially the kill test on Windows, then merge.
-- Then: milestone 1 (refresh).
+- Done: milestone 0 (AOT guard), PR #5. Its three `Native AOT publish and smoke`
+  jobs are required checks on main.
+- Done: storage step 6 cross-process race tests, PR #6, verified on the hosted
+  Ubuntu/Windows/macOS matrix (run 41239616630).
+- Active: milestone 1 (silent refresh) on branch `feat/silent-refresh`. The design is
+  drafted as [ADR 0009](decisions/0009-silent-refresh.md) (Proposed): refresh under
+  the session lease, retry instead of forced login after an unclear outcome (changes
+  SPECS TOK-04), and an AWS-style early-refresh margin that falls back to the still-valid
+  token on transient failures. Next action: maintainer review of ADR 0009; after
+  acceptance, update the parent SPECS/ARCHITECTURE and implement.
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
 
 ## Rules for every milestone
@@ -51,8 +52,7 @@ Lock in AOT compatibility while everything is still clean.
 - [x] The same job publishes the sample with
   `-p:PublishAot=true` on all three OSes (warnings are errors) and runs `list`,
   `status`, a corrupt-record `list`, and `logout` against a temporary directory.
-- [x] Hosted CI passes on all three OSes. Adding the jobs to main's required checks
-  is pending the maintainer's approval.
+- [x] Hosted CI passes on all three OSes. The jobs are required checks on main.
 
 Evidence: `5bfbd02` and `8c302f0` (PR #5); hosted run 41233761664 (pull request)
 and 41234014326 (push to main) passed all seven jobs, including the three AOT jobs.
@@ -69,7 +69,7 @@ that adds runtime-specific entries to its lock file; the AOT job restores unlock
 
 Done when: the AOT publish and smoke run pass in hosted CI on all three OSes.
 
-### 1. Silent refresh
+### 1. Silent refresh — active
 
 Without refresh, every expired access token means a new login, so the library is not
 useful yet.
@@ -78,8 +78,13 @@ useful yet.
   under the session lease, publishing a new generation.
 - Handle refresh-token rotation, revoked or expired refresh tokens (signed out,
   login required), and transient provider failures (no session loss).
-- Fence stale refreshes with epochs and generations (logout or login during refresh wins).
-- Revisit the open question from ADR 0006/0008: lease-enforced store mutation APIs.
+- Fence stale refreshes: the lease is held through the request and commit, so logout
+  or login during a refresh waits and a refresh never overwrites them.
+- Early-refresh margin (`RefreshAhead`, default 5 minutes): transient failures while
+  the current token is still valid return that token.
+- Sample `token` command printing expiry and scopes, never the token.
+- Close the open question from ADR 0006/0008: no lease-enforced store mutation APIs
+  (ADR 0009).
 - Add refresh to the cross-process race tests (`tests/Bijecta.CliAuth.ProcessTests`):
   a stale refresh must not overwrite a newer login or resurrect a logged-out session.
   The login, logout, competing-update, and termination cases were completed before

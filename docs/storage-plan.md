@@ -8,14 +8,14 @@ Architecture decisions belong in ADRs; this file records implementation status.
 
 Last updated: 2026-10-31.
 
-- Storage milestone complete for steps 1–5, all on main and verified on the hosted
+- Storage milestone complete for steps 1–6, all on main and verified on the hosted
   Ubuntu/Windows/macOS matrix: plaintext persistence through CliAuthenticator with
   session listing and private-location checks (ADR 0008), logout by record removal
   (ADR 0007), and cross-platform session leases (ADR 0006).
-- Step 6's process-race tests were pulled ahead of refresh at the maintainer's request
-  and are in progress on branch `test/storage-process-races` (see step 6). Refresh
-  races belong to roadmap milestone 1 and package verification to milestone 4. The
-  roadmap's Current focus remains the session handoff.
+- Step 6's process-race tests, pulled ahead of refresh at the maintainer's request,
+  are complete and verified on the hosted matrix (PR #6). Refresh races belong to
+  roadmap milestone 1 and package verification to milestone 4. The roadmap's
+  Current focus remains the session handoff.
 - Deferred limits: network drives are refused when DriveInfo reports them, but
   unknown/FUSE filesystems are not detected; FIFO/special-file and race-free
   native-open checks and root-user guarantees are out of scope (ADR 0008).
@@ -131,7 +131,7 @@ tests passed on macOS with 4 Windows-only protection tests skipped there (they r
 the Windows runner). Through CliAuthenticator an insecure directory blocks every
 operation, including logout, until fixed; file-level problems still allow logout.
 
-### 6. Final process-race verification — in progress
+### 6. Final process-race verification — complete
 
 Pulled ahead of refresh at the maintainer's request (2026-10-31). Refresh races and
 package verification stay with roadmap milestones 1 and 4.
@@ -141,12 +141,14 @@ package verification stay with roadmap milestones 1 and 4.
 - [ ] Verify stale refresh publication through Core: moved to roadmap milestone 1,
   since refresh does not exist yet.
 - [x] Verify abrupt termination during locking and before atomic publication.
-- [ ] Confirm the complete storage suite passes on Ubuntu, Windows, and macOS.
+- [x] Confirm the complete storage suite passes on Ubuntu, Windows, and macOS.
 - [ ] Verify a clean consumer can use the packaged file store: moved to roadmap
   milestone 4 (preview release).
 - [x] Update usage docs and implementation claims to match verified behavior.
 
-Evidence: In progress, hosted matrix pending. New `tests/Bijecta.CliAuth.ProcessTests`
+Evidence: `94a21e5`, `00c9ba6` (PR #6, merged as `f911edf`). Hosted run 41239616630
+passed all seven jobs on Ubuntu, Windows, and macOS, including the kill test on Windows.
+New `tests/Bijecta.CliAuth.ProcessTests`
 with the `Bijecta.CliAuth.SessionProcess` child helper: each child is a separate CLI
 run (real CliAuthenticator and FileTokenStore, fake protocol, synthetic credentials)
 controlled line by line, pausable inside the protocol (no lease held) or just before
