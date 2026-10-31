@@ -21,7 +21,7 @@ Last updated: 2026-10-31.
   per [ADR 0009](decisions/0009-silent-refresh.md) (Accepted) and verified locally,
   including Keycloak with strict rotation, plus review fixes: provider error codes are
   classified whatever the HTTP status, and a refresh the provider answered is committed
-  even after cancellation. Next action: push and open the PR, confirm
+  even after cancellation. Open as PR #7. Next action: confirm
   hosted CI on Ubuntu/Windows/macOS (process-race tests and the AOT `token` smoke), then
   mark milestone 1 complete.
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
