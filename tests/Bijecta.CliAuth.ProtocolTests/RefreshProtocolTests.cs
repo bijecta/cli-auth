@@ -86,12 +86,16 @@ public sealed class RefreshProtocolTests
         Assert.Equal("stored-refresh", (await ReadAsync(f))!.RefreshToken);
     }
 
-    [Fact]
-    public async Task InvalidGrantEndsTheSessionWithACredentialFreeMarker()
+    // RFC 6749 specifies 400, but some providers send invalid_grant with 401 or 403.
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task InvalidGrantEndsTheSessionWithACredentialFreeMarker(HttpStatusCode status)
     {
         using var f = new BrowserFixture();
         await SeedAsync(f, TimeSpan.FromSeconds(30));
-        f.OnTokenRequest = _ => Task.FromResult(BrowserFixture.Json(new { error = "invalid_grant" }, HttpStatusCode.BadRequest));
+        f.OnTokenRequest = _ => Task.FromResult(BrowserFixture.Json(new { error = "invalid_grant" }, status));
         var error = await Assert.ThrowsAsync<CliAuthException>(() => f.Auth().GetAccessTokenAsync("work", Ct));
         Assert.Equal(AuthErrorCode.ReauthenticationRequired, error.ErrorCode);
         Assert.Equal("invalid_grant", error.ProviderErrorCode);
@@ -116,6 +120,7 @@ public sealed class RefreshProtocolTests
             : BrowserFixture.Json(new { error = code, error_description = "synthetic-secret-detail" }, status));
         var error = await Assert.ThrowsAsync<CliAuthException>(() => f.Auth().GetAccessTokenAsync("work", Ct));
         Assert.Equal(expected, error.ErrorCode);
+        Assert.Equal(code, error.ProviderErrorCode);
         Assert.DoesNotContain("synthetic", error.Message);
         var stored = (await ReadAsync(f))!;
         Assert.Equal(seeded.Generation, stored.Generation);
@@ -170,6 +175,26 @@ public sealed class RefreshProtocolTests
         Assert.Equal(AuthErrorCode.NetworkFailure, error.ErrorCode);
         Assert.Equal(seeded.Generation, (await ReadAsync(f))!.Generation);
         Assert.Equal(1, f.TokenCalls);
+    }
+
+    [Fact]
+    public async Task AnAnswerReceivedBeforeTheCallerCancelsIsStillValidatedAndCommitted()
+    {
+        using var f = new BrowserFixture { Scenario = "rotation" };
+        var seeded = await SeedAsync(f, TimeSpan.FromSeconds(30));
+        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        // The refreshed ID token needs a signing-key reload; the caller cancels while it runs, after the provider
+        // has answered and possibly rotated the refresh token.
+        f.ChangeJwks = keys =>
+        {
+            if (f.KeyCalls > 1) { cancel.Cancel(); }
+            return keys;
+        };
+        var token = await f.Auth().GetAccessTokenAsync("work", cancel.Token);
+        Assert.Equal("synthetic-access", token.Value);
+        var stored = (await ReadAsync(f))!;
+        Assert.Equal("synthetic-refresh", stored.RefreshToken);
+        Assert.Equal(seeded.Generation + 1, stored.Generation);
     }
 
     [Fact]

@@ -208,8 +208,10 @@ internal sealed class SessionCoordinator
         {
             try
             {
+                // Not abandoned with WaitAsync: once the provider has answered, the protocol returns the result
+                // even after cancellation, and it must be committed because the refresh token may have rotated.
                 result = await _protocol.RefreshAsync(registration.Profile, current.RefreshToken!, current.Subject!,
-                    current.AccessToken!.GrantedScopes, linked.Token).WaitAsync(linked.Token).ConfigureAwait(false);
+                    current.AccessToken!.GrantedScopes, linked.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (OperationCanceledException) { throw new CliAuthException(AuthErrorCode.NetworkFailure); }

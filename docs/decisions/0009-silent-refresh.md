@@ -86,10 +86,11 @@ outside the hard margin and never refresh or touch the network.
 | Outcome | Session | Result |
 |---|---|---|
 | Success | Commit one record, next generation, same epoch: new access token, expiry, `ObtainedAtUtc`, and granted scopes. Keep the old refresh token if none is returned. | The new token |
-| `invalid_grant` | Replace the record with a credential-free `ReauthenticationRequired` record (same epoch, next generation). Login replaces it; logout removes it. | `ReauthenticationRequired`, in both margins |
+| `invalid_grant` (with any HTTP status; some providers send 401 or 403) | Replace the record with a credential-free `ReauthenticationRequired` record (same epoch, next generation). Login replaces it; logout removes it. | `ReauthenticationRequired`, in both margins |
 | Other OAuth error (`invalid_client`, `invalid_scope`, `unauthorized_client`, …) | Kept | A typed `ProtocolFailure` with the provider's error code, never the raw body. Not swallowed in the early margin: these are configuration problems. |
 | Transient: connection failure, timeout, provider 5xx, `temporarily_unavailable`, discovery failure | Kept | Early margin: the current token. Hard margin: `NetworkFailure` or `DiscoveryFailed`. |
-| Cancellation by the caller | Kept | `OperationCanceledException` |
+| Cancellation by the caller before the provider answers | Kept | `OperationCanceledException` |
+| Cancellation or deadline after the provider answered | Validated and committed as above, since the refresh token may have rotated | As above |
 | New token lifetime not longer than `ExpiryMargin` | The successful refresh is still committed | `TokenLifetimeTooShort`, after one refresh, never a loop (TOK-01) |
 | Commit fails after the provider answered | Unchanged on disk | `StorageUnavailable` (or the store's error); the new token is not returned |
 
@@ -128,7 +129,10 @@ numbers.
 The token request has its own deadline, shorter than the 30 s lease wait, so a
 slow provider does not turn every waiting caller into `SessionBusy`: 20 s in the
 hard margin, 5 s in the early margin, where the current token is still usable.
-Discovery shares that deadline. No failure cooldown is persisted: during an outage
+Discovery shares that deadline. Once the provider has answered, the deadline no
+longer applies: validating the response (and reloading signing keys for an unknown
+ID-token key ID) has its own 10 s bound, so a rotated refresh token is not discarded.
+No failure cooldown is persisted: during an outage
 each early-margin call makes one short attempt, and connection failures usually
 fail at once.
 
