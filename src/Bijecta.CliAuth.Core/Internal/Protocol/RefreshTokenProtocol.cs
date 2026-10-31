@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Duende.IdentityModel.Client;
 
 namespace Bijecta.CliAuth.Core;
@@ -33,7 +34,8 @@ internal sealed class RefreshTokenProtocol
                 ClientCredentialStyle = ClientCredentialStyle.PostBody,
                 RefreshToken = refreshToken
             }, ct).ConfigureAwait(false);
-            ct.ThrowIfCancellationRequested();
+            // The provider has answered and may already have rotated the refresh token. Finish validation even if the
+            // caller cancels or the coordinator's deadline passes, so the result can be committed (ADR 0009).
             if (response.IsError)
             {
                 throw Classify(response);
@@ -43,9 +45,11 @@ internal sealed class RefreshTokenProtocol
                 throw new CliAuthException(AuthErrorCode.ProtocolFailure);
             }
 
+            // Only a signing-key reload can wait here; it gets its own short bound while the session lease is held.
+            using var validation = new CancellationTokenSource(TimeSpan.FromSeconds(10), _time);
             return await new LoginTokenValidator(_time, _discovery).ValidateRefreshAsync(profile, provider,
                 response.Raw ?? throw new CliAuthException(AuthErrorCode.ProtocolFailure), subject, grantedScopes,
-                started, ct).ConfigureAwait(false);
+                started, validation.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { throw; }
         catch (CliAuthException) { throw; }
@@ -69,7 +73,7 @@ internal sealed class RefreshTokenProtocol
 
         // ADR 0009: invalid_grant ends the session; transient provider failures keep it; anything else is a typed
         // protocol error carrying only the provider's error code.
-        var error = response.ErrorType == ResponseErrorType.Protocol ? response.Error : null;
+        var error = ProviderError(response);
         if (error == "invalid_grant")
         {
             return new CliAuthException(AuthErrorCode.ReauthenticationRequired, error);
@@ -80,4 +84,10 @@ internal sealed class RefreshTokenProtocol
         }
         return new CliAuthException(AuthErrorCode.ProtocolFailure, error);
     }
+
+    // Read whatever the status: the token client treats only 400 as an OAuth error, but RFC 6749 allows 401 for
+    // invalid_client, and some providers send invalid_grant with 401 or 403.
+    private static string? ProviderError(TokenResponse response) =>
+        response.Json is { ValueKind: JsonValueKind.Object } json && json.TryGetProperty("error", out var error) &&
+        error.ValueKind == JsonValueKind.String ? error.GetString() : null;
 }

@@ -178,6 +178,24 @@ public sealed class RefreshCoordinatorTests
     }
 
     [Fact]
+    public async Task ARefreshAnsweredAfterTheCallerCancelsIsStillCommitted()
+    {
+        var fixture = new Fixture();
+        await fixture.SeedAsync(Expiring(fixture.Profile));
+        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        // The provider has answered (and may have rotated the refresh token) when the caller cancels.
+        fixture.Protocol.Refresh = async (_, _, _) =>
+        {
+            await cancel.CancelAsync();
+            await Task.Yield();
+            return Refreshed();
+        };
+        var token = await fixture.Auth().GetAccessTokenAsync("work", cancel.Token);
+        Assert.Equal("synthetic-refreshed-access", token.Value);
+        Assert.Equal("synthetic-rotated-refresh", (await fixture.ReadAsync())!.RefreshToken);
+    }
+
+    [Fact]
     public async Task AFailedCommitNeverReturnsTheNewToken()
     {
         var fixture = new Fixture();

@@ -104,7 +104,8 @@ refresh but returns the still-valid token if that attempt fails transiently.
 | `invalid_grant` | Credential-free ReauthenticationRequired marker | ReauthenticationRequired |
 | Other provider error | Kept | ProtocolFailure with the provider's error code |
 | Network failure, timeout (20 s; 5 s early), 5xx, discovery failure | Kept; the next call retries | Early margin: the current token. Otherwise NetworkFailure or DiscoveryFailed |
-| Caller cancellation | Kept | OperationCanceledException |
+| Caller cancellation before the provider answers | Kept | OperationCanceledException |
+| Caller cancellation or timeout after the provider answered | Committed, since the refresh token may have rotated | As for the response received |
 | Commit failure | Unchanged | StorageUnavailable; the new token is not returned |
 | New lifetime within the expiry margin | Committed | TokenLifetimeTooShort, one refresh per call |
 

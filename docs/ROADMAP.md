@@ -19,7 +19,9 @@ Last updated: 2026-10-31.
   Ubuntu/Windows/macOS matrix (run 41239616630).
 - Active: milestone 1 (silent refresh) on branch `feat/silent-refresh`, implemented
   per [ADR 0009](decisions/0009-silent-refresh.md) (Accepted) and verified locally,
-  including Keycloak with strict rotation. Next action: push and open the PR, confirm
+  including Keycloak with strict rotation, plus review fixes: provider error codes are
+  classified whatever the HTTP status, and a refresh the provider answered is committed
+  even after cancellation. Next action: push and open the PR, confirm
   hosted CI on Ubuntu/Windows/macOS (process-race tests and the AOT `token` smoke), then
   mark milestone 1 complete.
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
@@ -100,6 +102,12 @@ refresh with strict rotation and `invalid_grant` on reuse of a rotated token; fo
 locked restores and format checks pass for both solutions; every library builds with
 `-p:IsAotCompatible=true` without warnings; the osx-arm64 Native AOT sample passed the CI
 smoke steps including `token`. Parent SPECS TOK-04 and ARCHITECTURE were updated to match.
+Review fixes: OAuth errors are read from the JSON body whatever the HTTP status
+(`invalid_grant` with 401/403 now ends the session; 401 `invalid_client` keeps its
+code), and a response the provider already returned is validated (10 s bound) and
+committed despite caller cancellation or the request deadline. Four new cases failed
+before the fix and pass after; 461 solution tests, 457 passed and 4 Windows-only
+skipped; all 11 Keycloak tests pass again after the fixes.
 
 Done when: refresh works end to end against Keycloak, and the process-race tests
 pass on all three OSes.
