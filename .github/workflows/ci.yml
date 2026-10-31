@@ -64,8 +64,14 @@ jobs:
       - name: Install native toolchain prerequisites
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
-      # PublishAot adds runtime-specific lock entries, so this restore is not locked; the build job
-      # keeps locked restore. Trim/AOT warnings are errors, so a reflection regression fails here.
+      # IsAotCompatible and PublishAot add SDK-versioned and runtime-specific lock entries, so these
+      # restores are not locked; the build job keeps locked restore. Trim/AOT warnings are errors.
+      - name: Analyze every library for trim and AOT compatibility
+        run: |
+          set -euo pipefail
+          for project in src/*/*.csproj; do
+            dotnet build "$project" --configuration Release -p:IsAotCompatible=true
+          done
       - name: Publish the sample with Native AOT
         run: dotnet publish samples/Bijecta.CliAuth.Sample.Cli/Bijecta.CliAuth.Sample.Cli.csproj --configuration Release --runtime ${{ matrix.rid }} -p:PublishAot=true --output artifacts/aot
       # Exercises native locking, private-directory creation, record reads, and JSON output offline.

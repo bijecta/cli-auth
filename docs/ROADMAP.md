@@ -14,15 +14,15 @@ Last updated: 2026-10-31.
   record removal, session listing, and private-location checks
   ([storage plan](storage-plan.md), ADRs 0004–0008).
 - Active: milestone 0 (AOT guard), implemented on branch `feat/aot-guard`; local
-  checks pass. Next action: open the PR, confirm the new `Native AOT publish and
+  checks pass; PR #5. Next action: confirm the new `Native AOT publish and
   smoke` jobs on all three OSes, then propose adding them to main's required checks.
 - Then: milestone 1 (refresh).
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
 
 ## Rules for every milestone
 
-- **Native AOT compatible.** Libraries build with the trim, AOT, and single-file
-  analyzers as errors (no trim or AOT warnings), and CI keeps an AOT-published sample working. No
+- **Native AOT compatible.** CI builds every library with `IsAotCompatible` (trim
+  and AOT warnings are errors) and keeps an AOT-published sample working. No
   reflection-based JSON, configuration binding, or dynamic code; native calls use
   `LibraryImport`.
 - **Verified on Ubuntu, Windows, and macOS** in hosted CI before a milestone is done.
@@ -35,20 +35,24 @@ Last updated: 2026-10-31.
 
 Lock in AOT compatibility while everything is still clean.
 
-- [x] Library projects enable the trim, AOT, and single-file analyzers and mark
-  themselves trimmable (`src/Directory.Build.props`), so new warnings fail the build.
-  This is what `IsAotCompatible` sets, minus the SDK-versioned `ILLink.Tasks` package
-  it would add to every lock file (which would break locked restore on each SDK patch).
+- [x] CI job `Native AOT publish and smoke` builds every library with
+  `-p:IsAotCompatible=true` on all three OSes, so new trim/AOT warnings fail CI.
+  Libraries are marked trimmable. The property is not set in the projects: its
+  analyzers add an implicit `Microsoft.NET.ILLink.Tasks` package whose version follows
+  the installed SDK patch (10.0.12 locally, 10.0.14 on the hosted runners), which
+  broke locked restore in the first CI run of this branch.
 - [x] The sample writes its output with source-generated JSON (`SampleOutput.cs`)
   instead of anonymous-type reflection serialization.
-- [x] CI job `Native AOT publish and smoke` publishes the sample with
+- [x] The same job publishes the sample with
   `-p:PublishAot=true` on all three OSes (warnings are errors) and runs `list`,
   `status`, a corrupt-record `list`, and `logout` against a temporary directory.
 - [ ] Hosted CI passes on all three OSes; then add the jobs to main's required checks.
 
 Evidence: In progress. Release build zero warnings; 394 solution tests passed on
-macOS (4 Windows-only skipped); a probe reflection call in Core failed the build with
-IL2026/IL3050. The osx-arm64 AOT publish produced no trim/AOT warnings, and the CI
+macOS (4 Windows-only skipped); forced locked restores (`--force`, which bypasses
+NuGet's up-to-date shortcut that hid the lock mismatch locally) pass for both
+solutions; the library analysis step failed with IL2026/IL3050 on a probe
+reflection call in Storage.File. The first hosted run passed all three AOT jobs. The osx-arm64 AOT publish produced no trim/AOT warnings, and the CI
 smoke script passed against the native binary. Locally, Homebrew's source-built SDK
 links NativeAOT against OpenSSL and Brotli, so it needs
 `LIBRARY_PATH=/opt/homebrew/opt/openssl@3/lib:/opt/homebrew/lib`; the official SDK
