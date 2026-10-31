@@ -8,34 +8,29 @@ Architecture decisions belong in ADRs; this file records implementation status.
 
 Last updated: 2026-10-31.
 
-- Main includes steps 2 and 3: cross-platform session leases (`bff76ee`) and logout
-  by record removal (ADR 0007, merged from PR #1 as `c31dcbb`/`3ac9db9`), each with a
-  green Ubuntu/Windows/macOS hosted matrix. Main is protected: changes land through
-  PRs with all CI checks green. Parent design documents stay outside Git.
-- Step 4 decisions (ADR 0008, agreed with the maintainer 2026-10-31): append
-  `PersistenceMode.Plaintext` (never renamed: it is part of session keys); explicit
-  two-sided selection with no acknowledgment flag or `IsPlaintext`; `Protected`
-  stays the default; host-owned directory with documented locations and no helper;
-  plaintext warnings are the host's job; step 4 precedes step 5 hardening; add
-  `ListSessionsAsync` with per-profile errors; moving off plaintext deletes the old
-  record by its key. DI/configuration (Extensions, M5) and a reusable commands
-  package are later layers.
-- Step 4 (`7e1ed51`, PR #2, hosted matrix green in runs 41194606016/41194609826):
-  `FileTokenStore : ITokenStore`, `ProfileSessionStatus`, `ListSessionsAsync`,
-  coordinator tests against a real FileTokenStore, and sample `login`/`status`/
-  `list`/`logout` commands with `--storage-dir`.
-- Verification checkpoint: Release build zero warnings/errors; 368 solution tests
-  passed on macOS; sample status/list/logout exercised against a temp directory,
-  including corrupt records (listed per profile, recovered by logout). Sample login
-  against a real provider was not exercised locally.
-- CI now runs once per pull request (pull_request event), on pushes to main only,
-  and on demand via workflow_dispatch; a newer PR push cancels the superseded run.
-  Before this, every PR ran the full matrix twice (push and pull_request).
-- Next action: merge PR #2 with the maintainer's approval, then discuss step 5 (filesystem protections, including
-  whether login may replace a corrupt record).
-- Deferred limits: network shares are unsupported; automatic filesystem detection,
-  symlink/descriptor checks, and ownership hardening remain step 5. Lease-required
-  mutation APIs remain an open contract question (ADR 0008), revisited with refresh. Initial Linux import targets glibc.
+- Main includes steps 1–4: plaintext file persistence through CliAuthenticator
+  (ADR 0008, merged from PR #2 as `338088a`), logout by record removal (ADR 0007),
+  and cross-platform session leases (ADR 0006), each verified on the hosted
+  Ubuntu/Windows/macOS matrix. Main is protected: changes land through PRs with all
+  CI checks green. CI runs once per PR. Parent design documents stay outside Git.
+- Step 5 decisions (ADR 0009, agreed with the maintainer 2026-10-31): refuse
+  locations not private to the user with new `StorageInsecure` (Unix: no group/other
+  write on the directory, no group/other bits on session files; Windows: owner-only
+  ACLs, protected ACL on new directories); reject symlinked session/lock files and
+  network drives; validate a symlinked directory through its target; explicit login
+  replaces a still-corrupt record; clean this key's orphans after successful writes.
+- Step 5 implementation on branch `feat/storage-filesystem-protections`.
+- Verification checkpoint: Release build zero warnings/errors; 394 solution tests
+  passed on macOS (4 Windows-only skipped); sample exercised against a world-writable
+  directory (StorageInsecure, exit 5, fix-permissions hint).
+- Next action: open the step 5 PR and confirm the hosted matrix, especially the
+  Windows ACL tests and the Windows runner's temp-directory ACL; then merge with the
+  maintainer's approval and plan step 6 (final process-race and package verification).
+- Deferred limits: network drives are refused when DriveInfo reports them, but
+  unknown/FUSE filesystems are not detected; FIFO/special-file and race-free
+  native-open checks and root-user guarantees are out of scope (ADR 0009).
+  Lease-required mutation APIs remain an open contract question (ADR 0008),
+  revisited with refresh. Initial Linux import targets glibc.
 
 ## Status rules
 
@@ -127,20 +122,22 @@ coordinator tests that run the fake protocol against a real FileTokenStore (a ne
 authenticator per simulated CLI run), listing tests, and corrupt-record recovery.
 Unit tests reference Storage.File; Core does not.
 
-### 5. Filesystem protections and recovery
+### 5. Filesystem protections and recovery — implementation in progress
 
-- [ ] Review and define the supported local-filesystem/path trust boundary.
-- [ ] Verify restrictive permissions and define treatment of existing directories,
+- [x] Review and define the supported local-filesystem/path trust boundary (ADR 0009).
+- [x] Verify restrictive permissions and define treatment of existing directories,
   Windows ACLs, ownership, symlinks, and path substitution.
-- [ ] Define safe, explicit corrupt-file recovery/reset behavior, including whether
-  explicit login may replace a corrupt record instead of requiring logout first.
-- [ ] Define abandoned temporary-file handling without racing an active writer or
-  deleting lock identities. Document any intentionally deferred automatic cleanup.
+- [x] Define safe, explicit corrupt-file recovery: explicit login replaces a record
+  still corrupt at commit; newer-schema records still block login.
+- [x] Define abandoned temporary-file handling: this key's orphans are removed after
+  each successful write and on logout; no global sweep; lock identities untouched.
 - [ ] Test supported protections and safe error reporting on all target platforms.
 
-Evidence: partial foundations only: new Unix directories/files request 0700/0600,
-Windows inherits directory ACLs, reads are bounded, errors are sanitized, and readers
-ignore temporary files. Full ownership/path hardening and orphan recovery remain open.
+Evidence: In progress, hosted matrix pending. [ADR 0009](decisions/0009-file-store-protections.md).
+New `AuthErrorCode.StorageInsecure`. Release build zero warnings/errors; 394 solution
+tests passed on macOS with 4 Windows-only protection tests skipped there (they run on
+the Windows runner). Through CliAuthenticator an insecure directory blocks every
+operation, including logout, until fixed; file-level problems still allow logout.
 
 ### 6. Final process-race and package verification
 

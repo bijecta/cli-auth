@@ -82,21 +82,32 @@ them up while processes could reference them: doing so can split lock identity.
 
 Only stable local filesystems with native lock semantics are supported. Unix
 locking is advisory; arbitrary writers can bypass it. Network filesystems are
-unsupported, and filesystem-type detection is not implemented. Emulated locks
-with process-owned semantics can fail to exclude independent opens in one process.
-Full ownership, symlink, descriptor-type, and path-substitution checks remain open;
-the host must supply a trusted local directory and keep its identity stable.
+refused when .NET's DriveInfo reports them (ADR 0009); unknown or FUSE filesystems
+are not detected. Emulated locks with process-owned semantics can fail to exclude
+independent opens in one process.
 
 File flushing does not make the subsequent directory rename fully power-loss
 durable. No parent-directory synchronization or universal filesystem guarantee is
 provided. Process termination can leave a private orphaned temporary file; readers
-ignore it. Cleanup failures can also leave temporary files. Automatic orphan cleanup
-and crash-recovery policy are not implemented.
+ignore it. The next successful write or logout of the same key removes it; orphans
+of keys never written again remain, with no global sweep.
 
 New Unix directories/staged files request owner-only modes (0700/0600); replacement
-uses the staged file's mode. Existing directory permissions are unchanged. Windows
-files inherit directory ACLs; preserving custom destination ACLs and full ownership/
-symlink/path-substitution hardening remain future work. Files are unencrypted.
+uses the staged file's mode. Files are unencrypted.
+
+The store refuses locations that are not private to the current user, with
+StorageInsecure ([ADR 0009](../../docs/decisions/0009-file-store-protections.md)):
+- Unix: a storage directory writable by group or others, or a session file with
+  any group/other permission bits. A directory readable by others (`0755`) is allowed.
+- Windows: a directory or session file not owned by the current user (or
+  Administrators) or granting read, write, delete, or permission rights to anyone
+  else. New directories get a protected ACL for the user, SYSTEM, and Administrators.
+- Session and lock files that are symlinks or junctions, and network drives
+  (UNC paths and `DriveType.Network` mounts). A symlinked storage directory is
+  checked through its target.
+
+Checks run on every lease acquisition, read, and write. They cannot protect
+against programs running as the same user, and root can read any file.
 Reads are bounded to 1 MiB. Parser errors remain safe StorageCorrupt/UnsupportedSchema,
 and filesystem failures map to StorageUnavailable without raw paths/inner exceptions.
 
@@ -128,15 +139,18 @@ var sessions = await auth.ListSessionsAsync(cancellationToken);
 Selection is explicit on both sides; any persistence mismatch is InvalidConfiguration.
 Tokens are unencrypted, so tell users. Use a per-user directory such as
 `~/.local/state/<app>`, `~/Library/Application Support/<app>`, or
-`%LOCALAPPDATA%\<app>`. Filesystem hardening (existing-directory permissions,
-Windows ACLs, symlink rejection) is storage-plan step 5. See
-[ADR 0008](../../docs/decisions/0008-plaintext-persistence-integration.md).
+`%LOCALAPPDATA%\<app>`. The directory must be private to the user, or operations
+fail with StorageInsecure. See
+[ADR 0008](../../docs/decisions/0008-plaintext-persistence-integration.md) and
+[ADR 0009](../../docs/decisions/0009-file-store-protections.md).
 
 ## Logout
 
 `DeleteAsync` removes `<sessionKey>.json` under the caller-held lease, without
 reading it, so explicit logout can remove corrupt or unsupported-schema records.
 Missing records/directories succeed and create nothing; repeated logout is a no-op.
+`DeleteAsync` skips location checks; through CliAuthenticator, an insecure
+directory must be fixed first because acquiring the lease validates it.
 Afterwards this key's orphaned staging files are deleted best effort; the lock file
 is kept. A failure to remove the record returns sanitized StorageUnavailable.
 Every committed session has a fresh epoch, which fences work that started from it.

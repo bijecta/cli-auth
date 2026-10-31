@@ -78,9 +78,11 @@ internal sealed class SessionCoordinator
             throw new CliAuthException(AuthErrorCode.InvalidRequest);
         }
         Guid capturedEpoch;
+        bool capturedCorrupt;
         await using (var lease = await AcquireAsync(registration.Key, ct).ConfigureAwait(false))
         {
-            var current = await ReadAsync(registration, ct).ConfigureAwait(false);
+            // ADR 0009: explicit login may replace a corrupt record, but only one still corrupt at commit.
+            (var current, capturedCorrupt) = await ReadReplaceableAsync(registration, ct).ConfigureAwait(false);
             capturedEpoch = current?.Epoch ?? Guid.Empty;
         }
 
@@ -98,10 +100,11 @@ internal sealed class SessionCoordinator
         ct.ThrowIfCancellationRequested();
         await using (var lease = await AcquireAsync(registration.Key, ct).ConfigureAwait(false))
         {
-            var current = await ReadAsync(registration, ct).ConfigureAwait(false);
-            if ((current?.Epoch ?? Guid.Empty) != capturedEpoch)
+            var (current, corrupt) = await ReadReplaceableAsync(registration, ct).ConfigureAwait(false);
+            if (corrupt != capturedCorrupt || (current?.Epoch ?? Guid.Empty) != capturedEpoch)
             {
-                throw new CliAuthException(AuthErrorCode.OperationSuperseded);
+                // A record that became corrupt mid-login is never replaced; report it rather than supersede.
+                throw new CliAuthException(corrupt ? AuthErrorCode.StorageCorrupt : AuthErrorCode.OperationSuperseded);
             }
             ValidateCandidate(registration, candidate);
             var committed = new StoredSession(NextGeneration(current), Guid.NewGuid(), SessionLifecycleState.Active,
@@ -190,7 +193,7 @@ internal sealed class SessionCoordinator
                     refreshToken = (await ReadAsync(registration, ct).ConfigureAwait(false))?.RefreshToken;
                 }
                 catch (CliAuthException error) when (error.ErrorCode is AuthErrorCode.StorageCorrupt or
-                    AuthErrorCode.UnsupportedSchema or AuthErrorCode.StorageUnavailable)
+                    AuthErrorCode.UnsupportedSchema or AuthErrorCode.StorageUnavailable or AuthErrorCode.StorageInsecure)
                 {
                     // Explicit local removal must remain possible when credentials cannot be read.
                     outcome = RevocationOutcome.Failed;
@@ -261,6 +264,13 @@ internal sealed class SessionCoordinator
             }
         }
         return current;
+    }
+
+    // A corrupt record reads as (null, true); its successor starts again at generation 0.
+    private async ValueTask<(StoredSession? Session, bool Corrupt)> ReadReplaceableAsync(Registration registration, CancellationToken ct)
+    {
+        try { return (await ReadAsync(registration, ct).ConfigureAwait(false), false); }
+        catch (CliAuthException error) when (error.ErrorCode == AuthErrorCode.StorageCorrupt) { return (null, true); }
     }
 
     private async ValueTask WriteAsync(SessionKey key, StoredSession session, CancellationToken ct)

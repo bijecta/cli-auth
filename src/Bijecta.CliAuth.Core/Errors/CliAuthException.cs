@@ -34,6 +34,7 @@ public sealed class CliAuthException : Exception
         AuthErrorCode.ReauthenticationRequired or AuthErrorCode.RefreshOutcomeUnknown => "Run explicit login.",
         AuthErrorCode.StorageUnavailable or AuthErrorCode.StorageCorrupt or
             AuthErrorCode.UnsupportedSchema => "Inspect the selected storage backend; do not silently reset it.",
+        AuthErrorCode.StorageInsecure => "Use a private local directory and restrict its permissions to the current user.",
         AuthErrorCode.SessionBusy or AuthErrorCode.OperationSuperseded => "Retry the command after the current operation completes.",
         _ => "Inspect the failure before retrying; do not automatically replay token requests."
     };
@@ -59,6 +60,7 @@ public sealed class CliAuthException : Exception
         AuthErrorCode.TokenLifetimeTooShort => "The token lifetime does not exceed the expiry margin.",
         AuthErrorCode.DestinationNotAllowed => "The HTTP destination is not allowed.",
         AuthErrorCode.InvalidRequest => "The authentication request is invalid.",
+        AuthErrorCode.StorageInsecure => "The storage location is not private to the current user.",
         _ => throw new ArgumentOutOfRangeException(nameof(code))
     };
 }

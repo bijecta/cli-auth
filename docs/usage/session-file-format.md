@@ -79,10 +79,21 @@ logout of that key removes it. No broader orphan policy is implemented.
 Filesystem failures return StorageUnavailable without raw paths or inner exceptions.
 An explicit write does not inspect previous content for corruption. New Unix
 directories/staged files request owner-only modes (0700/0600), and replacement keeps
-the staged file's mode. Existing directory permissions are unchanged, Windows ACLs
-are inherited, and ownership/symlink/custom-ACL hardening remains later work.
-The Core persistence enum/default and sample behavior are unchanged; the standalone
-class is not yet injectable into CliAuthenticator.
+the staged file's mode.
+
+The store refuses locations that are not private to the current user, with
+StorageInsecure ([ADR 0009](../decisions/0009-file-store-protections.md)):
+- Unix: a storage directory writable by group or others, or a session file with
+  any group/other permission bits. A directory readable by others (`0755`) is allowed.
+- Windows: a directory or session file not owned by the current user (or
+  Administrators) or granting read, write, delete, or permission rights to anyone
+  else. New directories get a protected ACL for the user, SYSTEM, and Administrators.
+- Session and lock files that are symlinks or junctions, and network drives
+  (UNC paths and `DriveType.Network` mounts). A symlinked storage directory is
+  checked through its target.
+
+Checks run on every lease acquisition, read, and write. They cannot protect
+against programs running as the same user, and root can read any file.
 
 ## Contents
 
@@ -150,5 +161,8 @@ and deletion with an open reader followed by an immediate new write.
 Lock tests additionally cover same-key contention, independent keys/directories,
 bounded waits, cancellation, process termination, lease disposal races, and disabled
 implicit .NET locking in subprocesses. Controlled-time tests verify deadlines and
-retry behavior. They pass in the existing Ubuntu/Windows/macOS hosted matrix. Full power-loss durability, permission/path hardening,
-and encryption remain outside these tests.
+retry behavior. Protection tests cover group/world-writable directories, session
+files with broad modes, symlinked session/lock files and directories, Windows ACLs,
+network-mount detection, and orphan cleanup after writes. They run in the existing
+Ubuntu/Windows/macOS hosted matrix. Full power-loss durability and encryption remain
+outside these tests.

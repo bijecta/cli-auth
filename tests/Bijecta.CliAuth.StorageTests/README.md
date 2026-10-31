@@ -41,6 +41,12 @@ Logout tests verify record removal across instances, missing/repeated logout,
 removal of unreadable records, this-key-only orphan cleanup, cancellation,
 sanitized failures, and removal with an open reader followed by a new write.
 
+Protection tests (ADR 0009) verify StorageInsecure for group/world-writable Unix
+directories, session files with group/other bits, symlinked session/lock files and
+directories, Windows directories/files granting access to others, and network-mount
+detection, plus orphan cleanup after writes. Platform-specific cases skip elsewhere.
+Synthetic records are written through `PrivateTestFiles` with owner-only access.
+
 No real credentials or OS credential services are used. Power-loss durability,
 full permission/path hardening, and native protection tests
 will be added with their implementation slices. Hosted OS success requires actual
