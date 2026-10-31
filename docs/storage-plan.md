@@ -20,7 +20,7 @@ Last updated: 2026-10-31.
   `ListSessionsAsync` with per-profile errors; moving off plaintext deletes the old
   record by its key. DI/configuration (Extensions, M5) and a reusable commands
   package are later layers.
-- Step 4 implementation on branch `feat/storage-plaintext-integration`:
+- Step 4 (`7e1ed51`, PR #2, hosted matrix green in runs 41194606016/41194609826):
   `FileTokenStore : ITokenStore`, `ProfileSessionStatus`, `ListSessionsAsync`,
   coordinator tests against a real FileTokenStore, and sample `login`/`status`/
   `list`/`logout` commands with `--storage-dir`.
@@ -28,8 +28,10 @@ Last updated: 2026-10-31.
   passed on macOS; sample status/list/logout exercised against a temp directory,
   including corrupt records (listed per profile, recovered by logout). Sample login
   against a real provider was not exercised locally.
-- Next action: open the step 4 PR, confirm the hosted matrix, merge with the
-  maintainer's approval, then discuss step 5 (filesystem protections, including
+- CI now runs once per pull request (pull_request event), on pushes to main only,
+  and on demand via workflow_dispatch; a newer PR push cancels the superseded run.
+  Before this, every PR ran the full matrix twice (push and pull_request).
+- Next action: merge PR #2 with the maintainer's approval, then discuss step 5 (filesystem protections, including
   whether login may replace a corrupt record).
 - Deferred limits: network shares are unsupported; automatic filesystem detection,
   symlink/descriptor checks, and ownership hardening remain step 5. Lease-required
@@ -106,7 +108,7 @@ assert that logout supersedes a login started while signed in and that a login
 started while signed out commits (the accepted ADR 0007 trade-off). Parent SPECS,
 ARCHITECTURE, and IMPLEMENTATION_PLAN were updated to match.
 
-### 4. Complete the storage contract and authentication integration — implementation in progress
+### 4. Complete the storage contract and authentication integration — complete
 
 - [x] Add an explicit plaintext persistence mode; never label this store Protected.
 - [x] Make `FileTokenStore` implement the complete `ITokenStore` contract and expose
@@ -116,9 +118,10 @@ ARCHITECTURE, and IMPLEMENTATION_PLAN were updated to match.
 - [x] Document explicit selection and host-owned directory configuration; no silent fallback.
 - [x] Add `ListSessionsAsync` so hosts can show which profiles have sessions (ADR 0008).
 - [x] Add persistent sample commands (`login`, `status`, `list`, `logout`).
-- [ ] Confirm the suite on the Ubuntu/Windows/macOS hosted matrix.
+- [x] Confirm the suite on the Ubuntu/Windows/macOS hosted matrix.
 
-Evidence: In progress, hosted matrix pending. [ADR 0008](decisions/0008-plaintext-persistence-integration.md).
+Evidence: `7e1ed51` (PR #2); hosted runs 41194606016 (push) and 41194609826 (pull
+request) passed on Ubuntu, Windows, and macOS plus the Linux Keycloak job. [ADR 0008](decisions/0008-plaintext-persistence-integration.md).
 Release build zero warnings/errors; 368 solution tests passed on macOS, including
 coordinator tests that run the fake protocol against a real FileTokenStore (a new
 authenticator per simulated CLI run), listing tests, and corrupt-record recovery.
