@@ -13,9 +13,13 @@ Last updated: 2026-10-31.
   memory storage, and plaintext file storage with cross-process leases, logout by
   record removal, session listing, and private-location checks
   ([storage plan](storage-plan.md), ADRs 0004–0008).
-- Active: milestone 0 (AOT guard), implemented on branch `feat/aot-guard`; local
-  checks pass; PR #5. Next action: confirm the new `Native AOT publish and
-  smoke` jobs on all three OSes, then propose adding them to main's required checks.
+- Done: milestone 0 (AOT guard), merged from PR #5. Its three `Native AOT publish
+  and smoke` jobs are not yet required checks on main; adding them needs the
+  maintainer's approval.
+- Active: storage step 6 file tests, pulled ahead of refresh at the maintainer's
+  request, on branch `test/storage-process-races`. New `ProcessTests` suite (6
+  cross-process tests) passes locally. Next action: open the PR and confirm the
+  suite on the hosted Ubuntu/Windows/macOS matrix, especially the kill test on Windows.
 - Then: milestone 1 (refresh).
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
 
@@ -31,7 +35,7 @@ Last updated: 2026-10-31.
 
 ## Milestones
 
-### 0. AOT guard — in progress
+### 0. AOT guard — complete
 
 Lock in AOT compatibility while everything is still clean.
 
@@ -46,9 +50,12 @@ Lock in AOT compatibility while everything is still clean.
 - [x] The same job publishes the sample with
   `-p:PublishAot=true` on all three OSes (warnings are errors) and runs `list`,
   `status`, a corrupt-record `list`, and `logout` against a temporary directory.
-- [ ] Hosted CI passes on all three OSes; then add the jobs to main's required checks.
+- [x] Hosted CI passes on all three OSes. Adding the jobs to main's required checks
+  is pending the maintainer's approval.
 
-Evidence: In progress. Release build zero warnings; 394 solution tests passed on
+Evidence: `5bfbd02` and `8c302f0` (PR #5); hosted run 41233761664 (pull request)
+and 41234014326 (push to main) passed all seven jobs, including the three AOT jobs.
+Release build zero warnings; 394 solution tests passed on
 macOS (4 Windows-only skipped); forced locked restores (`--force`, which bypasses
 NuGet's up-to-date shortcut that hid the lock mismatch locally) pass for both
 solutions; the library analysis step failed with IL2026/IL3050 on a probe
@@ -72,9 +79,10 @@ useful yet.
   login required), and transient provider failures (no session loss).
 - Fence stale refreshes with epochs and generations (logout or login during refresh wins).
 - Revisit the open question from ADR 0006/0008: lease-enforced store mutation APIs.
-- Includes the remaining storage verification (storage-plan step 6): cross-process
-  competing updates, login versus logout versus refresh through Core, and abrupt
-  termination during locking and before publication.
+- Add refresh to the cross-process race tests (`tests/Bijecta.CliAuth.ProcessTests`):
+  a stale refresh must not overwrite a newer login or resurrect a logged-out session.
+  The login, logout, competing-update, and termination cases were completed before
+  this milestone (storage-plan step 6).
 
 Done when: refresh works end to end against Keycloak, and the process-race tests
 pass on all three OSes.
