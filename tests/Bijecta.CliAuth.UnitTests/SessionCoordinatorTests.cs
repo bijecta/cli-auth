@@ -216,10 +216,10 @@ public sealed class SessionCoordinatorTests
         var tokens = await Task.WhenAll(Enumerable.Range(0, 100).Select(_ => auth.GetAccessTokenAsync("work", ct)));
         Assert.All(tokens, token => Assert.Same(original.AccessToken, token));
         fixture.Clock.Now = CoreTestData.Now.AddMinutes(5);
+        // Status never refreshes; acquisition does (RefreshCoordinatorTests).
         Assert.Equal(SessionStatusKind.RefreshRequired, (await auth.GetStatusAsync("work", ct)).Kind);
-        var unsupported = await Assert.ThrowsAsync<CliAuthException>(() => auth.GetAccessTokenAsync("work", ct));
-        Assert.Equal(AuthErrorCode.UnsupportedCapability, unsupported.ErrorCode);
         Assert.Same(original, await fixture.ReadAsync());
+        Assert.Equal(0, fixture.Protocol.RefreshCalls);
         Assert.Equal(0, fixture.Protocol.LoginCalls);
         Assert.Equal(0, fixture.Protocol.RevokeCalls);
         Assert.Equal(0, fixture.Browser.Calls);

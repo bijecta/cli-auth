@@ -3,7 +3,8 @@
 A disposable public client with S256 required, no client secret, no password grant,
 and the single exact browser redirect `http://127.0.0.1:43821/callback/`. The sample selects
 MemoryOnly explicitly. Its session disappears when the CLI exits; no persistence,
-refresh or remote logout is demonstrated yet. A separate `bijecta-cli-device` public
+remote logout is demonstrated yet; the sample's persistent `token` command refreshes
+silently. A separate `bijecta-cli-device` public
 client enables device login with browser authorization disabled.
 
 The .NET file-based helper explicitly disables Native AOT. It runs using the

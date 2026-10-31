@@ -17,7 +17,7 @@ internal static class SessionFileSerializer
     };
     private static readonly HashSet<string> TokenFields = new(StringComparer.Ordinal)
     {
-        "value", "expiresAtUtc", "grantedScopes", "tokenType"
+        "value", "expiresAtUtc", "grantedScopes", "tokenType", "obtainedAtUtc"
     };
 
     internal static byte[] Serialize(SessionKey key, StoredSession session)
@@ -45,6 +45,8 @@ internal static class SessionFileSerializer
                 foreach (var scope in token.GrantedScopes) { writer.WriteStringValue(scope); }
                 writer.WriteEndArray();
                 writer.WriteString("tokenType", token.TokenType);
+                // Optional within schema version 1: records written before refresh support omit it (ADR 0009).
+                if (token.ObtainedAtUtc is { } obtained) { writer.WriteString("obtainedAtUtc", obtained); }
                 writer.WriteEndObject();
                 if (session.RefreshToken is not null) { writer.WriteString("refreshToken", session.RefreshToken); }
             }
@@ -88,13 +90,9 @@ internal static class SessionFileSerializer
             CheckObject(access, TokenFields);
             var scopes = access.GetProperty("grantedScopes").EnumerateArray()
                 .Select(scope => scope.GetString() ?? throw Corrupt()).ToArray();
-            var expiryText = RequiredString(access, "expiresAtUtc");
-            if (!expiryText.EndsWith("Z", StringComparison.Ordinal) && !expiryText.EndsWith("+00:00", StringComparison.Ordinal))
-            {
-                throw Corrupt();
-            }
-            var token = new AccessToken(RequiredString(access, "value"),
-                access.GetProperty("expiresAtUtc").GetDateTimeOffset(), scopes, RequiredString(access, "tokenType"));
+            var token = new AccessToken(RequiredString(access, "value"), UtcTimestamp(access, "expiresAtUtc"), scopes,
+                RequiredString(access, "tokenType"),
+                access.TryGetProperty("obtainedAtUtc", out _) ? UtcTimestamp(access, "obtainedAtUtc") : null);
             return new StoredSession(generation, epoch, state, token,
                 root.TryGetProperty("refreshToken", out _) ? RequiredString(root, "refreshToken") : null,
                 new Uri(RequiredString(root, "issuer"), UriKind.Absolute),
@@ -116,6 +114,16 @@ internal static class SessionFileSerializer
         {
             if (allowed is not null && !allowed.Contains(property.Name) || !seen.Add(property.Name)) { throw Corrupt(); }
         }
+    }
+
+    private static DateTimeOffset UtcTimestamp(JsonElement value, string name)
+    {
+        var text = RequiredString(value, name);
+        if (!text.EndsWith("Z", StringComparison.Ordinal) && !text.EndsWith("+00:00", StringComparison.Ordinal))
+        {
+            throw Corrupt();
+        }
+        return value.GetProperty(name).GetDateTimeOffset();
     }
 
     private static string RequiredString(JsonElement root, string name) =>

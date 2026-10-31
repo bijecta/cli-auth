@@ -84,6 +84,10 @@ jobs:
           expect() { local pattern=$1; shift; local out; out=$("$exe" "$@" "${args[@]}"); echo "$out"; grep -qF "$pattern" <<< "$out"; }
           expect '"profile":"personal","status":{"kind":"None"}' list --profile work --profile personal
           expect '"kind":"None"' status --profile work
+          # Token acquisition without a session must fail with ReauthenticationRequired (exit code 3).
+          set +e; "$exe" token --profile work "${args[@]}" 2> "$dir/../token.err"; code=$?; set -e
+          cat "$dir/../token.err"
+          [ "$code" -eq 3 ] && grep -qF '"errorCode":"ReauthenticationRequired"' "$dir/../token.err"
           key=$(basename "$(ls "$dir"/*.lock | head -n 1)" .lock)
           (umask 077; printf '{"broken' > "$dir/$key.json")
           expect '"error":"StorageCorrupt"' list --profile work --profile personal

@@ -6,7 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Bijecta.CliAuth.Core;
 
-internal sealed class BrowserAuthenticationProtocol : IAuthenticationProtocol
+internal sealed class BrowserAuthenticationProtocol
 {
     private readonly TimeProvider _time;
     private readonly HttpClient _http;

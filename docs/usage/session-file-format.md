@@ -107,13 +107,13 @@ One JSON document represents one session key, with these fields:
 | `epoch` | Existing login/logout identity |
 | `state` | Existing lifecycle name, such as Active or None |
 | `issuer`, `clientId`, `subject` | Identity binding for credential-bearing states |
-| `accessToken` | Value, UTC expiry, granted scopes, and Bearer token type |
+| `accessToken` | Value, UTC expiry, granted scopes, Bearer token type, and an optional UTC `obtainedAtUtc` (when the token response arrived; it bounds early refresh to the token's lifetime, [ADR 0009](../decisions/0009-silent-refresh.md)). Records without it remain valid |
 | `refreshToken` | Optional refresh credential; omitted when absent |
 
 A compact example using disposable synthetic values:
 
 ```json
-{"schemaVersion":1,"sessionKey":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","generation":7,"epoch":"7348885f-33f4-43b0-b636-4c40eb5dd4a2","state":"Active","issuer":"https://issuer.example.test/Realm/","clientId":"sample-cli","subject":"synthetic-subject","accessToken":{"value":"synthetic-access","expiresAtUtc":"2031-01-02T10:00:00+00:00","grantedScopes":["openid","profile"],"tokenType":"Bearer"},"refreshToken":"synthetic-refresh"}
+{"schemaVersion":1,"sessionKey":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","generation":7,"epoch":"7348885f-33f4-43b0-b636-4c40eb5dd4a2","state":"Active","issuer":"https://issuer.example.test/Realm/","clientId":"sample-cli","subject":"synthetic-subject","accessToken":{"value":"synthetic-access","expiresAtUtc":"2031-01-02T10:00:00+00:00","grantedScopes":["openid","profile"],"tokenType":"Bearer","obtainedAtUtc":"2031-01-02T09:00:00+00:00"},"refreshToken":"synthetic-refresh"}
 ```
 
 There is no indentation, byte-order mark, or trailing newline in the serialized
@@ -137,7 +137,7 @@ include real session bytes in exceptions, snapshots, or shareable artifacts.
 
 Documents are bounded to 1 MiB and JSON depth 8. The reader rejects malformed JSON,
 duplicate or unexpected properties, missing required values, invalid lifecycle
-combinations, non-UTC/ambiguous expiry, and a mismatched session key. Core constructors
+combinations, non-UTC/ambiguous expiry or obtained time, an obtained time after expiry, and a mismatched session key. Core constructors
 validate the reconstructed session and token. These checks provide consistency;
 they do not authenticate a plaintext file or prove that its contents were not edited.
 

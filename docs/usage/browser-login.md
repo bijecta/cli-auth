@@ -7,7 +7,7 @@ login/acquire/status/logout smoke test on 2026-10-28. Six automated Testcontaine
 Playwright tests also passed against disposable Keycloak and Chromium. Native
 launcher/process checks remain pending. This is a development milestone,
 not a release/security-review claim. Device login is also implemented; see [the device walkthrough](device-login.md).
-Refresh, protected persistence, and remote revocation are still deferred.
+Silent refresh is implemented ([ADR 0009](../decisions/0009-silent-refresh.md)); protected persistence and remote revocation are still deferred.
 
 ## Host usage
 

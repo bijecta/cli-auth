@@ -4,7 +4,7 @@ The initial Core feature implements immutable local configuration, safe contract
 models, session isolation, and a process-local memory store with matching locks.
 It defines `ICliAuthenticator`, now implemented by the local session coordinator
 in `CliAuthenticator`. Browser PKCE, device login, and lazy discovery are implemented;
-refresh and DI registration remain deferred. See [composition](authenticator-composition.md)
+silent refresh is implemented ([ADR 0009](../decisions/0009-silent-refresh.md)); DI registration remains deferred. See [composition](authenticator-composition.md)
 and [browser login](browser-login.md).
 
 The [compiled consumer example](../../samples/Bijecta.CliAuth.Sample.Cli/Examples/CoreUsage.cs)
@@ -137,9 +137,10 @@ under the matching session lock, without protocol or browser interaction.
 Behavioral tests cover configuration rejection, defensive collections, namespace
 isolation, safe formatting, schema/lifecycle validation, fake-time expiry boundaries,
 credential removal, lock timeout/cancellation, and 100 cooperating in-process mutations.
-These tests do not establish native persistence, completed refresh coordination,
-protocol conformance, or real-provider compatibility.
+These tests do not establish native persistence, protocol conformance, or
+real-provider compatibility; refresh is covered by its own coordinator, protocol,
+process, and Keycloak tests.
 
-Both login adapters are implemented with synthetic-provider and Keycloak coverage.
-Plaintext persistence and refresh coordination follow, preserving lazy discovery
-and the internal dependency boundaries in the accepted ADRs.
+Both login adapters, plaintext persistence, and silent refresh are implemented with
+synthetic-provider and Keycloak coverage, preserving lazy discovery and the internal
+dependency boundaries in the accepted ADRs.

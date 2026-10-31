@@ -3,7 +3,7 @@
 Device login is implemented behind the same public authenticator as browser PKCE.
 It uses host-owned presentation, provider-paced polling, shared OIDC validation,
 and the existing epoch-checked session commit. Storage remains explicitly memory-only
-in the sample. Refresh and protected persistence are separate future milestones.
+in the sample. Sessions from either flow refresh silently ([ADR 0009](../decisions/0009-silent-refresh.md)); protected persistence is a future milestone.
 
 ## Host usage
 

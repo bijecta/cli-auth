@@ -46,6 +46,7 @@ browser prerequisites fail the suite instead of silently skipping its assertions
 | Deny consent | Actual Keycloak denial maps to AccessDenied, saves no session, and releases the callback port |
 | Cancel at login form | Cancelling while the real login form is visible saves no session and releases the listener |
 | Occupied callback port | Core fails before calling the browser launcher and leaves storage empty |
+| Silent refresh with rotation | The realm enables strict refresh-token rotation (`revokeRefreshToken`, no reuse). After login, the authenticator's clock is moved into the expiry margin; acquisition refreshes against Keycloak, commits the next generation with a new refresh token and the same epoch, and returns the new token from cache afterwards. Putting the used refresh token back makes Keycloak answer `invalid_grant`, which leaves a ReauthenticationRequired marker |
 
 The four device scenarios additionally cover:
 
@@ -83,10 +84,15 @@ The existing Bijecta.CliAuth.slnx continues to run the deterministic tests on
 Windows, Linux, and macOS without container/browser prerequisites. The separate
 Bijecta.CliAuth.IntegrationTests.slnx references the same Core project and this
 integration project. Its dedicated Linux CI job restores locked packages, builds,
-installs Chromium, runs all ten tests, and checks formatting.
+installs Chromium, runs all eleven tests, and checks formatting.
 
 The extra solution is an execution boundary, not a separate implementation or a
 NuGet package. It keeps heavyweight infrastructure out of the normal test command.
+
+## Refresh validation — 2026-10-31
+
+All eleven browser/device/refresh tests passed locally against disposable Keycloak
+26.8.1 and headless Chromium, with zero skips. Hosted CI is not yet confirmed.
 
 ## Device validation — 2026-10-29
 

@@ -130,7 +130,7 @@ public sealed class DiscoveryTests
     public async Task DeviceSelectionIsUnsupportedWithoutDiscoveryOrBrowserFallback()
     {
         using var f = new BrowserFixture();
-        Assert.Equal(AuthErrorCode.UnsupportedCapability, (await Assert.ThrowsAsync<CliAuthException>(() => f.Auth().LoginAsync("work", new LoginOptions(LoginFlow.Device, (_, _) => Task.CompletedTask), Ct))).ErrorCode);
+        Assert.Equal(AuthErrorCode.UnsupportedCapability, (await Assert.ThrowsAsync<CliAuthException>(() => f.Protocol().LoginAsync(f.Profile(), new LoginOptions(LoginFlow.Device, (_, _) => Task.CompletedTask), f, Ct))).ErrorCode);
         Assert.Equal(0, f.MetadataCalls);
         Assert.Equal(0, f.BrowserCalls);
     }

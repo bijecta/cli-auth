@@ -9,15 +9,16 @@ public sealed class AccessToken
 {
     /// <summary>Creates a token without decoding its value or inferring identity or expiry.</summary>
     public AccessToken(string value, DateTimeOffset expiresAtUtc, IEnumerable<string>? grantedScopes = null,
-        string tokenType = "Bearer")
+        string tokenType = "Bearer", DateTimeOffset? obtainedAtUtc = null)
     {
         if (string.IsNullOrEmpty(value) || value.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)) ||
-            !string.Equals(tokenType, "Bearer", StringComparison.OrdinalIgnoreCase))
+            !string.Equals(tokenType, "Bearer", StringComparison.OrdinalIgnoreCase) || obtainedAtUtc > expiresAtUtc)
         {
             throw new CliAuthException(AuthErrorCode.InvalidRequest);
         }
         Value = value;
         ExpiresAtUtc = expiresAtUtc.ToUniversalTime();
+        ObtainedAtUtc = obtainedAtUtc?.ToUniversalTime();
         GrantedScopes = ContractValidation.Scopes(grantedScopes, includeOpenId: false, AuthErrorCode.InvalidRequest);
     }
 
@@ -26,6 +27,8 @@ public sealed class AccessToken
     public string Value { get; }
     /// <summary>Expiry derived from the provider's response, normalized to UTC.</summary>
     public DateTimeOffset ExpiresAtUtc { get; }
+    /// <summary>Local time the token response was received, when known; bounds early refresh to the token's lifetime.</summary>
+    public DateTimeOffset? ObtainedAtUtc { get; }
     /// <summary>The granted scopes, without inventing missing grants.</summary>
     public IReadOnlyList<string> GrantedScopes { get; }
     /// <summary>The canonical bearer token type.</summary>

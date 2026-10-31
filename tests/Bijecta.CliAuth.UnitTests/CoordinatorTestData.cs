@@ -13,10 +13,16 @@ internal static class CoordinatorTestData
         new AccessToken("synthetic-access-" + subject, expiry ?? CoreTestData.Now.AddMinutes(5), scopes ?? profile.Scopes),
         subject, issuer ?? profile.Issuer, clientId ?? profile.ClientId, refreshToken);
 
+    internal static ValidatedRefresh Refreshed(string value = "synthetic-refreshed-access", DateTimeOffset? expiry = null,
+        string? refreshToken = "synthetic-rotated-refresh", IEnumerable<string>? scopes = null) => new(
+        new AccessToken(value, expiry ?? CoreTestData.Now.AddHours(1), scopes ?? ["api.read"],
+            obtainedAtUtc: CoreTestData.Now), refreshToken);
+
     internal static StoredSession Session(OidcProfile profile, DateTimeOffset? expiry = null,
         string? refreshToken = "synthetic-refresh", SessionLifecycleState state = SessionLifecycleState.Active,
-        long generation = 0, Guid? epoch = null) => new(generation, epoch ?? Guid.NewGuid(), state,
-        new AccessToken("synthetic-cached-access", expiry ?? CoreTestData.Now.AddMinutes(5), profile.Scopes),
+        long generation = 0, Guid? epoch = null, DateTimeOffset? obtained = null) => new(generation, epoch ?? Guid.NewGuid(), state,
+        new AccessToken("synthetic-cached-access", expiry ?? CoreTestData.Now.AddMinutes(5), profile.Scopes,
+            obtainedAtUtc: obtained),
         refreshToken, profile.Issuer, profile.ClientId, "synthetic-cached-subject");
 
     internal static TaskCompletionSource<T> Signal<T>() => new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -49,13 +55,22 @@ internal static class CoordinatorTestData
     {
         internal int LoginCalls;
         internal int RevokeCalls;
+        internal int RefreshCalls;
         internal Func<OidcProfile, LoginOptions, ISystemBrowser, CancellationToken, Task<ValidatedLogin>>? Login;
+        internal Func<OidcProfile, string, CancellationToken, Task<ValidatedRefresh>>? Refresh;
         internal Func<OidcProfile, string, CancellationToken, Task<RevocationOutcome>>? Revoke;
 
         public Task<ValidatedLogin> LoginAsync(OidcProfile profile, LoginOptions options, ISystemBrowser browser, CancellationToken ct)
         {
             Interlocked.Increment(ref LoginCalls);
             return Login is null ? Task.FromResult(Candidate(profile)) : Login(profile, options, browser, ct);
+        }
+
+        public Task<ValidatedRefresh> RefreshAsync(OidcProfile profile, string refreshToken, string subject,
+            IReadOnlyList<string> grantedScopes, CancellationToken ct)
+        {
+            Interlocked.Increment(ref RefreshCalls);
+            return Refresh is null ? Task.FromResult(Refreshed()) : Refresh(profile, refreshToken, ct);
         }
 
         public Task<RevocationOutcome> RevokeRefreshTokenAsync(OidcProfile profile, string refreshToken, CancellationToken ct)
@@ -99,9 +114,9 @@ internal static class CoordinatorTestData
         }
     }
 
-    internal sealed class Fixture
+    internal sealed class Fixture(OidcProfile? profile = null)
     {
-        internal OidcProfile Profile { get; } = CoordinatorTestData.Profile();
+        internal OidcProfile Profile { get; } = profile ?? CoordinatorTestData.Profile();
         internal Store Store { get; } = new();
         internal Protocol Protocol { get; } = new();
         internal Clock Clock { get; } = new();

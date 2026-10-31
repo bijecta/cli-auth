@@ -14,8 +14,9 @@ internal sealed class ProviderDiscovery(HttpClient http, TimeProvider time)
         internal long Started;
     }
 
-    private readonly ConcurrentDictionary<(SessionKey, LoginFlow), Entry> _entries = new();
-    internal async Task<ProviderMetadata> GetAsync(OidcProfile profile, CancellationToken ct, LoginFlow flow = LoginFlow.Browser)
+    private readonly ConcurrentDictionary<(SessionKey, LoginFlow?), Entry> _entries = new();
+    // A null flow loads only what refresh needs: the token endpoint and signing keys.
+    internal async Task<ProviderMetadata> GetAsync(OidcProfile profile, CancellationToken ct, LoginFlow? flow = LoginFlow.Browser)
     {
         var entry = _entries.GetOrAdd((SessionKey.ForProfile(profile), flow), _ => new Entry());
         await entry.Gate.WaitAsync(ct).ConfigureAwait(false);
@@ -55,10 +56,14 @@ internal sealed class ProviderDiscovery(HttpClient http, TimeProvider time)
                     }
                     authorization = Endpoint(profile, RequiredCapability(root, "authorization_endpoint"));
                 }
-                else
+                else if (flow == LoginFlow.Device)
                 {
                     Supports(root, "grant_types_supported", "urn:ietf:params:oauth:grant-type:device_code");
                     device = Endpoint(profile, RequiredCapability(root, "device_authorization_endpoint"));
+                }
+                else
+                {
+                    Supports(root, "grant_types_supported", "refresh_token");
                 }
                 var token = Endpoint(profile, ProtocolJson.Required(root, "token_endpoint"));
                 var jwks = Endpoint(profile, ProtocolJson.Required(root, "jwks_uri"));

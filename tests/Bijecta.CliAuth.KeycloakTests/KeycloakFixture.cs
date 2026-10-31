@@ -98,6 +98,9 @@ public sealed class KeycloakFixture : IAsyncLifetime
     private JsonObject BuildRealm()
     {
         var realm = JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "realm.template.json")))!.AsObject();
+        // Strict refresh-token rotation: each refresh token is single-use, so reuse of a rotated one is rejected.
+        realm["revokeRefreshToken"] = true;
+        realm["refreshTokenMaxReuse"] = 0;
         var client = realm["clients"]![0]!.AsObject();
         client["redirectUris"] = new JsonArray(JsonValue.Create($"http://127.0.0.1:{CallbackPort}/callback/"));
         foreach (var id in new[] { AcceptClientId, DenyClientId })
