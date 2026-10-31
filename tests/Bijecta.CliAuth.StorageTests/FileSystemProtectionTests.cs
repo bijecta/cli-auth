@@ -6,7 +6,7 @@ using Bijecta.CliAuth.Storage.File;
 
 namespace Bijecta.CliAuth.StorageTests;
 
-// ADR 0009 location rules. Unix- and Windows-specific cases skip on the other platform.
+// ADR 0008 location rules. Unix- and Windows-specific cases skip on the other platform.
 public sealed class FileSystemProtectionTests
 {
     private static readonly SessionKey Key = new(new string('a', 64));

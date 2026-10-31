@@ -3,7 +3,7 @@ using static Bijecta.CliAuth.UnitTests.CoordinatorTestData;
 
 namespace Bijecta.CliAuth.UnitTests;
 
-// ADR 0009: explicit login may replace a corrupt record, but only one that is still corrupt at commit.
+// ADR 0008: explicit login may replace a corrupt record, but only one that is still corrupt at commit.
 public sealed class CorruptRecoveryTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;

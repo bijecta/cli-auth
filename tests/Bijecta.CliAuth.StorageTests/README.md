@@ -41,7 +41,7 @@ Logout tests verify record removal across instances, missing/repeated logout,
 removal of unreadable records, this-key-only orphan cleanup, cancellation,
 sanitized failures, and removal with an open reader followed by a new write.
 
-Protection tests (ADR 0009) verify StorageInsecure for group/world-writable Unix
+Protection tests (ADR 0008) verify StorageInsecure for group/world-writable Unix
 directories, session files with group/other bits, symlinked session/lock files and
 directories, Windows directories/files granting access to others, and network-mount
 detection, plus orphan cleanup after writes. Platform-specific cases skip elsewhere.

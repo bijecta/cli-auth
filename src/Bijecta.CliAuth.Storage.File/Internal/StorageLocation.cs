@@ -5,7 +5,7 @@ using Bijecta.CliAuth.Core;
 
 namespace Bijecta.CliAuth.Storage.File;
 
-// ADR 0009: the storage directory and session files must be private to the current user.
+// ADR 0008: the storage directory and session files must be private to the current user.
 // Violations throw StorageInsecure; ordinary I/O failures surface as IOException for callers to sanitize.
 internal static class StorageLocation
 {

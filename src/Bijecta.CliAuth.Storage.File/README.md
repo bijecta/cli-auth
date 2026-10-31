@@ -82,7 +82,7 @@ them up while processes could reference them: doing so can split lock identity.
 
 Only stable local filesystems with native lock semantics are supported. Unix
 locking is advisory; arbitrary writers can bypass it. Network filesystems are
-refused when .NET's DriveInfo reports them (ADR 0009); unknown or FUSE filesystems
+refused when .NET's DriveInfo reports them (ADR 0008); unknown or FUSE filesystems
 are not detected. Emulated locks with process-owned semantics can fail to exclude
 independent opens in one process.
 
@@ -96,7 +96,7 @@ New Unix directories/staged files request owner-only modes (0700/0600); replacem
 uses the staged file's mode. Files are unencrypted.
 
 The store refuses locations that are not private to the current user, with
-StorageInsecure ([ADR 0009](../../docs/decisions/0009-file-store-protections.md)):
+StorageInsecure ([ADR 0008](../../docs/decisions/0008-plaintext-persistence-integration.md)):
 - Unix: a storage directory writable by group or others, or a session file with
   any group/other permission bits. A directory readable by others (`0755`) is allowed.
 - Windows: a directory or session file not owned by the current user (or
@@ -141,8 +141,7 @@ Tokens are unencrypted, so tell users. Use a per-user directory such as
 `~/.local/state/<app>`, `~/Library/Application Support/<app>`, or
 `%LOCALAPPDATA%\<app>`. The directory must be private to the user, or operations
 fail with StorageInsecure. See
-[ADR 0008](../../docs/decisions/0008-plaintext-persistence-integration.md) and
-[ADR 0009](../../docs/decisions/0009-file-store-protections.md).
+[ADR 0008](../../docs/decisions/0008-plaintext-persistence-integration.md).
 
 ## Logout
 
