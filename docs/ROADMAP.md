@@ -17,13 +17,11 @@ Last updated: 2026-10-31.
   jobs are required checks on main.
 - Done: storage step 6 cross-process race tests, PR #6, verified on the hosted
   Ubuntu/Windows/macOS matrix (run 41239616630).
-- Active: milestone 1 (silent refresh) on branch `feat/silent-refresh`, implemented
-  per [ADR 0009](decisions/0009-silent-refresh.md) (Accepted) and verified locally,
-  including Keycloak with strict rotation, plus review fixes: provider error codes are
-  classified whatever the HTTP status, and a refresh the provider answered is committed
-  even after cancellation. Open as PR #7. Next action: confirm
-  hosted CI on Ubuntu/Windows/macOS (process-race tests and the AOT `token` smoke), then
-  mark milestone 1 complete.
+- Done: milestone 1 (silent refresh), PR #7, per [ADR 0009](decisions/0009-silent-refresh.md):
+  hosted run 41254185595 passed all seven jobs on Ubuntu/Windows/macOS, including the
+  process-race refresh tests, the AOT `token` smoke, and Keycloak with strict rotation.
+- Next: milestone 2 (provider compatibility). Discuss its scope and order before
+  starting; nothing is in progress.
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
 
 ## Rules for every milestone
@@ -70,7 +68,7 @@ that adds runtime-specific entries to its lock file; the AOT job restores unlock
 
 Done when: the AOT publish and smoke run pass in hosted CI on all three OSes.
 
-### 1. Silent refresh — implemented, hosted CI pending
+### 1. Silent refresh — complete
 
 Without refresh, every expired access token means a new login, so the library is not
 useful yet.
@@ -92,7 +90,7 @@ useful yet.
   (ADR 0009).
 - [x] Add refresh to the cross-process race tests: one refresh for two processes, a
   process killed mid-refresh, and logout/login waiting for a refresh and still winning.
-- [ ] Hosted CI passes on all three OSes.
+- [x] Hosted CI passes on all three OSes (run 41254185595, PR #7).
 
 Evidence (local, macOS): Release build zero warnings; 457 solution tests, 453 passed and
 4 Windows-only skipped (new: 25 coordinator refresh tests, 20 protocol refresh tests
