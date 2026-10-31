@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.mtp-v2" PrivateAssets="all" />
+    <Using Include="Xunit" />
+    <ProjectReference Include="../../src/Bijecta.CliAuth.Storage.File/Bijecta.CliAuth.Storage.File.csproj" />
+    <ProjectReference Include="../Bijecta.CliAuth.SessionProcess/Bijecta.CliAuth.SessionProcess.csproj" ReferenceOutputAssembly="false"
+      OutputItemType="SessionProcessAssembly" />
+  </ItemGroup>
+  <!-- Copy from the helper's resolved output (honours configuration, RID, and output overrides), including subfolders. -->
+  <Target Name="CopySessionProcess" AfterTargets="Build">
+    <PropertyGroup>
+      <SessionProcessOutputDirectory>@(SessionProcessAssembly->'%(RootDir)%(Directory)')</SessionProcessOutputDirectory>
+    </PropertyGroup>
+    <Error Condition="'$(SessionProcessOutputDirectory)' == ''" Text="The session helper output could not be resolved." />
+    <ItemGroup>
+      <SessionProcessFiles Include="$(SessionProcessOutputDirectory)**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SessionProcessFiles)" DestinationFiles="@(SessionProcessFiles->'$(OutDir)SessionProcess/%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
+</Project>

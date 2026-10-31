@@ -12,9 +12,10 @@ Last updated: 2026-10-31.
   Ubuntu/Windows/macOS matrix: plaintext persistence through CliAuthenticator with
   session listing and private-location checks (ADR 0008), logout by record removal
   (ADR 0007), and cross-platform session leases (ADR 0006).
-- Step 6 moved to the [roadmap](ROADMAP.md): its process-race items are part of
-  milestone 1 (refresh), and its package items part of milestone 4 (preview release).
-  This file is no longer the active handoff; see the roadmap's Current focus.
+- Step 6's process-race tests were pulled ahead of refresh at the maintainer's request
+  and are in progress on branch `test/storage-process-races` (see step 6). Refresh
+  races belong to roadmap milestone 1 and package verification to milestone 4. The
+  roadmap's Current focus remains the session handoff.
 - Deferred limits: network drives are refused when DriveInfo reports them, but
   unknown/FUSE filesystems are not detected; FIFO/special-file and race-free
   native-open checks and root-user guarantees are out of scope (ADR 0008).
@@ -130,19 +131,37 @@ tests passed on macOS with 4 Windows-only protection tests skipped there (they r
 the Windows runner). Through CliAuthenticator an insecure directory blocks every
 operation, including logout, until fixed; file-level problems still allow logout.
 
-### 6. Final process-race and package verification — moved to the roadmap
+### 6. Final process-race verification — in progress
 
-- [ ] Verify cross-process visibility and competing session updates.
-- [ ] Verify login versus logout and stale refresh/login publication through Core.
-- [ ] Verify abrupt termination during locking and before atomic publication.
+Pulled ahead of refresh at the maintainer's request (2026-10-31). Refresh races and
+package verification stay with roadmap milestones 1 and 4.
+
+- [x] Verify cross-process visibility and competing session updates.
+- [x] Verify login versus logout publication through Core across processes.
+- [ ] Verify stale refresh publication through Core: moved to roadmap milestone 1,
+  since refresh does not exist yet.
+- [x] Verify abrupt termination during locking and before atomic publication.
 - [ ] Confirm the complete storage suite passes on Ubuntu, Windows, and macOS.
-- [ ] Verify a clean consumer can use the packaged file store with explicit selection.
-- [ ] Update usage docs and implementation claims to match verified behavior.
+- [ ] Verify a clean consumer can use the packaged file store: moved to roadmap
+  milestone 4 (preview release).
+- [x] Update usage docs and implementation claims to match verified behavior.
 
-Moved on 2026-10-31: the process-race items belong to roadmap milestone 1 (refresh)
-and the package items to milestone 4 (preview release); see [ROADMAP.md](ROADMAP.md).
-Encryption/native secret stores, key rotation, optional
-biometrics, and universal crash/power-loss guarantees are outside this milestone.
+Evidence: In progress, hosted matrix pending. New `tests/Bijecta.CliAuth.ProcessTests`
+with the `Bijecta.CliAuth.SessionProcess` child helper: each child is a separate CLI
+run (real CliAuthenticator and FileTokenStore, fake protocol, synthetic credentials)
+controlled line by line, pausable inside the protocol (no lease held) or just before
+publication (commit lease held, staging file written). Six tests: visibility across
+processes; four concurrent logins from the same state commit exactly one (generation
+0, others OperationSuperseded); a login superseded after another process replaced the
+record, then later logins reaching generation 2 (no lost update); logout superseding a
+login started while signed in; the ADR 0007 signed-out trade-off; and a process killed
+before publication (old record readable, lease released, orphan removed by the next
+write). Core and Storage.File grant the helper internal access, as they do the unit and
+storage test projects. Release build zero warnings; 400 solution tests passed on macOS
+(4 Windows-only skipped); the process suite passed 15 consecutive runs; temporarily
+removing the coordinator's epoch check or the store's orphan cleanup failed 4 of the 6
+tests. Encryption/native secret stores, key rotation, optional biometrics, and universal
+crash/power-loss guarantees are outside this milestone.
 
 ## References
 
