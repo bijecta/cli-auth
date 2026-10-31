@@ -106,6 +106,16 @@ status.SetAction((parse, cancellationToken) => Run(async () =>
     return 0;
 }, cancellationToken));
 
+var token = new Command("token", "Acquire an access token, refreshing it silently when near expiry; prints its expiry and scopes, never the token.");
+Add(token, storageDir, profiles, issuer, clientId, scopes, port, allowHttp);
+token.SetAction((parse, cancellationToken) => Run(async () =>
+{
+    var (auth, profile) = Persistent(parse);
+    var result = await auth.GetAccessTokenAsync(profile, cancellationToken);
+    SampleOutput.Print(new(Action: "token", Profile: profile, ExpiresAtUtc: result.ExpiresAtUtc, GrantedScopes: result.GrantedScopes));
+    return 0;
+}, cancellationToken));
+
 var list = new Command("list", "List every given profile and whether it has a stored session.");
 Add(list, storageDir, profiles, issuer, clientId, scopes, port, allowHttp);
 list.SetAction((parse, cancellationToken) => Run(async () =>
@@ -154,6 +164,10 @@ static async Task<int> Run(Func<Task<int>> action, CancellationToken cancellatio
         else if (error.ErrorCode is AuthErrorCode.UnsupportedSchema)
         {
             Console.Error.WriteLine("The stored session was written by a newer version. Upgrade, or run logout to remove it.");
+        }
+        else if (error.ErrorCode is AuthErrorCode.ReauthenticationRequired)
+        {
+            Console.Error.WriteLine("No usable session: run login.");
         }
         else if (error.ErrorCode is AuthErrorCode.StorageInsecure)
         {

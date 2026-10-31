@@ -35,7 +35,8 @@ internal sealed class BrowserFixture : HttpMessageHandler, ISystemBrowser
     internal Uri? LastCallback;
     internal OidcProfile Profile(int port = 0, IEnumerable<Uri>? origins = null) => new("protocol-tests", "work", new Uri(Issuer), ClientId, ["profile"], PersistenceMode.MemoryOnly, new BrowserCallbackOptions(port), allowedEndpointOrigins: origins);
     internal BrowserAuthenticationProtocol Protocol() => new(Time, this);
-    internal CliAuthenticator Auth(IAuthenticationProtocol? protocol = null, OidcProfile? profile = null) => new([profile ?? Profile()], Store, protocol ?? Protocol(), browser: this, timeProvider: Time);
+    internal RefreshTokenProtocol RefreshProtocol() => new(Time, this);
+    internal CliAuthenticator Auth(IAuthenticationProtocol? protocol = null, OidcProfile? profile = null) => new([profile ?? Profile()], Store, protocol ?? new AuthenticationProtocol(Time, this), browser: this, timeProvider: Time);
     public async Task OpenAsync(Uri uri, CancellationToken cancellationToken = default)
     {
         BrowserCalls++;
@@ -79,7 +80,7 @@ internal sealed class BrowserFixture : HttpMessageHandler, ISystemBrowser
                 },
                 ["grant_types_supported"] = new[]
                 {
-                    "authorization_code"
+                    "authorization_code", "refresh_token"
                 },
                 ["code_challenge_methods_supported"] = new[]
                 {
@@ -89,7 +90,7 @@ internal sealed class BrowserFixture : HttpMessageHandler, ISystemBrowser
             if (Device)
             {
                 metadata["device_authorization_endpoint"] = Issuer + "/device";
-                metadata["grant_types_supported"] = new[] { "authorization_code", "urn:ietf:params:oauth:grant-type:device_code" };
+                metadata["grant_types_supported"] = new[] { "authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:device_code" };
             }
             return Json(ChangeMetadata?.Invoke(metadata) ?? metadata);
 
@@ -152,10 +153,13 @@ internal sealed class BrowserFixture : HttpMessageHandler, ISystemBrowser
         var claims = new List<Claim>();
         if (Scenario != "missing_sub")
         {
-            claims.Add(new Claim("sub", "test-subject"));
+            claims.Add(new Claim("sub", Scenario == "other_sub" ? "other-subject" : "test-subject"));
         }
 
-        if (Scenario != "missing_nonce" && Exchange?.GetValueOrDefault("grant_type") != "urn:ietf:params:oauth:grant-type:device_code")
+        // A refreshed ID token repeats the original login's nonce, as Keycloak does, when one exists.
+        var grant = Exchange?.GetValueOrDefault("grant_type");
+        if (Scenario != "missing_nonce" && grant != "urn:ietf:params:oauth:grant-type:device_code" &&
+            (grant != "refresh_token" || Front is not null))
         {
             claims.Add(new Claim("nonce", Scenario == "wrong_nonce" ? "wrong" : Front!["nonce"]));
         }

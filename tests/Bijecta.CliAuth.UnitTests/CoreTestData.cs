@@ -10,8 +10,9 @@ internal static class CoreTestData
         string issuer = "https://issuer.example.test", string client = "sample-client",
         IEnumerable<string>? scopes = null, BrowserCallbackOptions? callback = null,
         bool allowLoopbackHttp = false, TimeSpan? margin = null,
-        PersistenceMode persistence = PersistenceMode.MemoryOnly) =>
-        new(application, name, new Uri(issuer), client, scopes, persistence, callback, allowLoopbackHttp, margin);
+        PersistenceMode persistence = PersistenceMode.MemoryOnly, TimeSpan? refreshAhead = null) =>
+        new(application, name, new Uri(issuer), client, scopes, persistence, callback, allowLoopbackHttp, margin,
+            refreshAhead: refreshAhead);
 
     internal static StoredSession Session(DateTimeOffset? expiry = null, string? refresh = "synthetic-refresh",
         SessionLifecycleState state = SessionLifecycleState.Active, long generation = 0) =>

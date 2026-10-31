@@ -17,12 +17,11 @@ Last updated: 2026-10-31.
   jobs are required checks on main.
 - Done: storage step 6 cross-process race tests, PR #6, verified on the hosted
   Ubuntu/Windows/macOS matrix (run 41239616630).
-- Active: milestone 1 (silent refresh) on branch `feat/silent-refresh`. The design is
-  drafted as [ADR 0009](decisions/0009-silent-refresh.md) (Proposed): refresh under
-  the session lease, retry instead of forced login after an unclear outcome (changes
-  SPECS TOK-04), and an AWS-style early-refresh margin that falls back to the still-valid
-  token on transient failures. Next action: maintainer review of ADR 0009; after
-  acceptance, update the parent SPECS/ARCHITECTURE and implement.
+- Active: milestone 1 (silent refresh) on branch `feat/silent-refresh`, implemented
+  per [ADR 0009](decisions/0009-silent-refresh.md) (Accepted) and verified locally,
+  including Keycloak with strict rotation. Next action: push and open the PR, confirm
+  hosted CI on Ubuntu/Windows/macOS (process-race tests and the AOT `token` smoke), then
+  mark milestone 1 complete.
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
 
 ## Rules for every milestone
@@ -69,26 +68,38 @@ that adds runtime-specific entries to its lock file; the AOT job restores unlock
 
 Done when: the AOT publish and smoke run pass in hosted CI on all three OSes.
 
-### 1. Silent refresh — active
+### 1. Silent refresh — implemented, hosted CI pending
 
 Without refresh, every expired access token means a new login, so the library is not
 useful yet.
 
-- Refresh expired or nearly expired access tokens with the stored refresh token,
-  under the session lease, publishing a new generation.
-- Handle refresh-token rotation, revoked or expired refresh tokens (signed out,
-  login required), and transient provider failures (no session loss).
-- Fence stale refreshes: the lease is held through the request and commit, so logout
+- [x] Refresh expired or nearly expired access tokens with the stored refresh token,
+  under the session lease, publishing a new generation with the same epoch.
+- [x] Handle refresh-token rotation, revoked or expired refresh tokens
+  (`invalid_grant`: credential-free ReauthenticationRequired marker), and transient
+  provider failures (session kept, next call retries; no forced login after an unclear
+  outcome, which changes SPECS TOK-04).
+- [x] Fence stale refreshes: the lease is held through the request and commit, so logout
   or login during a refresh waits and a refresh never overwrites them.
-- Early-refresh margin (`RefreshAhead`, default 5 minutes): transient failures while
-  the current token is still valid return that token.
-- Sample `token` command printing expiry and scopes, never the token.
-- Close the open question from ADR 0006/0008: no lease-enforced store mutation APIs
+- [x] Early-refresh margin (`OidcProfile.RefreshAhead`, default 5 minutes, last half of
+  the lifetime via `AccessToken.ObtainedAtUtc`): transient failures while the current
+  token is still valid return that token. Request deadlines: 20 s, 5 s early.
+- [x] Sample `token` command printing expiry and scopes, never the token; the AOT smoke
+  checks it fails with ReauthenticationRequired (exit 3) without a session.
+- [x] Close the open question from ADR 0006/0008: no lease-enforced store mutation APIs
   (ADR 0009).
-- Add refresh to the cross-process race tests (`tests/Bijecta.CliAuth.ProcessTests`):
-  a stale refresh must not overwrite a newer login or resurrect a logged-out session.
-  The login, logout, competing-update, and termination cases were completed before
-  this milestone (storage-plan step 6).
+- [x] Add refresh to the cross-process race tests: one refresh for two processes, a
+  process killed mid-refresh, and logout/login waiting for a refresh and still winning.
+- [ ] Hosted CI passes on all three OSes.
+
+Evidence (local, macOS): Release build zero warnings; 457 solution tests, 453 passed and
+4 Windows-only skipped (new: 25 coordinator refresh tests, 20 protocol refresh tests
+against the fake provider, 4 process tests, serializer and configuration cases); the
+process suite passed 10 consecutive runs; all 11 Keycloak tests passed, including
+refresh with strict rotation and `invalid_grant` on reuse of a rotated token; forced
+locked restores and format checks pass for both solutions; every library builds with
+`-p:IsAotCompatible=true` without warnings; the osx-arm64 Native AOT sample passed the CI
+smoke steps including `token`. Parent SPECS TOK-04 and ARCHITECTURE were updated to match.
 
 Done when: refresh works end to end against Keycloak, and the process-race tests
 pass on all three OSes.

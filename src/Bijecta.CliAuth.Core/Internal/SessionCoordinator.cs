@@ -164,14 +164,85 @@ internal sealed class SessionCoordinator
         var status = SessionStatusEvaluator.Evaluate(current, _time, registration.Profile.ExpiryMargin);
         if (status.Kind == SessionStatusKind.Available)
         {
-            return current!.AccessToken!;
+            if (!InsideEarlyRefreshMargin(registration.Profile, current!))
+            {
+                return current!.AccessToken!;
+            }
+            try
+            {
+                return await RefreshAsync(registration, current!, TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+            }
+            catch (CliAuthException error) when (error.ErrorCode is AuthErrorCode.NetworkFailure or AuthErrorCode.DiscoveryFailed)
+            {
+                // ADR 0009: a transient early failure keeps using the still-valid token.
+                return current!.AccessToken!;
+            }
         }
         if (status.Kind == SessionStatusKind.RefreshRequired)
         {
-            // Refresh coordination is a subsequent feature. Preserve the existing session.
-            throw new CliAuthException(AuthErrorCode.UnsupportedCapability);
+            return await RefreshAsync(registration, current!, TimeSpan.FromSeconds(20), ct).ConfigureAwait(false);
         }
         throw new CliAuthException(AuthErrorCode.ReauthenticationRequired);
+    }
+
+    // The early margin applies only to the last half of a token's lifetime, so short-lived tokens are not refreshed on
+    // every call. Records without ObtainedAtUtc use only the hard margin.
+    private bool InsideEarlyRefreshMargin(OidcProfile profile, StoredSession current)
+    {
+        var token = current.AccessToken!;
+        if (current.RefreshToken is null || token.ObtainedAtUtc is not { } obtained || profile.RefreshAhead <= profile.ExpiryMargin)
+        {
+            return false;
+        }
+        var window = TimeSpan.FromTicks(Math.Min(profile.RefreshAhead.Ticks, (token.ExpiresAtUtc - obtained).Ticks / 2));
+        return token.ExpiresAtUtc - _time.GetUtcNow() <= window;
+    }
+
+    // Called with the session lease held; it stays held through the request and the commit (ADR 0009).
+    private async Task<AccessToken> RefreshAsync(Registration registration, StoredSession current, TimeSpan budget,
+        CancellationToken ct)
+    {
+        ValidatedRefresh result;
+        using (var deadline = new CancellationTokenSource(budget, _time))
+        using (var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, deadline.Token))
+        {
+            try
+            {
+                result = await _protocol.RefreshAsync(registration.Profile, current.RefreshToken!, current.Subject!,
+                    current.AccessToken!.GrantedScopes, linked.Token).WaitAsync(linked.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (OperationCanceledException) { throw new CliAuthException(AuthErrorCode.NetworkFailure); }
+            catch (CliAuthException error) when (error.ErrorCode == AuthErrorCode.ReauthenticationRequired)
+            {
+                // The provider rejected the refresh token: keep a credential-free marker until login or logout.
+                await WriteAsync(registration.Key, new StoredSession(NextGeneration(current), current.Epoch,
+                    SessionLifecycleState.ReauthenticationRequired), ct).ConfigureAwait(false);
+                throw;
+            }
+            catch (CliAuthException) { throw; }
+            catch (Exception) { throw new CliAuthException(AuthErrorCode.ProtocolFailure); }
+        }
+
+        var token = result?.AccessToken;
+        if (token is null || token.ExpiresAtUtc <= _time.GetUtcNow() ||
+            token.GrantedScopes.Any(scope => !current.AccessToken!.GrantedScopes.Contains(scope, StringComparer.Ordinal)))
+        {
+            throw new CliAuthException(AuthErrorCode.ProtocolFailure);
+        }
+        if (result!.RefreshToken is not null)
+        {
+            ContractValidation.Identifier(result.RefreshToken, AuthErrorCode.ProtocolFailure);
+        }
+        var committed = new StoredSession(NextGeneration(current), current.Epoch, SessionLifecycleState.Active, token,
+            result.RefreshToken ?? current.RefreshToken, current.Issuer, current.ClientId, current.Subject);
+        // The provider may already have rotated the refresh token: commit even if the caller cancels meanwhile.
+        await WriteAsync(registration.Key, committed, CancellationToken.None).ConfigureAwait(false);
+        if (token.ExpiresAtUtc - _time.GetUtcNow() <= registration.Profile.ExpiryMargin)
+        {
+            throw new CliAuthException(AuthErrorCode.TokenLifetimeTooShort);
+        }
+        return token;
     }
 
     internal async Task<LogoutResult> LogoutAsync(string profile, LogoutOptions options, CancellationToken ct)

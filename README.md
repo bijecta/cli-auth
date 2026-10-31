@@ -5,9 +5,9 @@ own CLI applications using an OIDC provider such as Keycloak or Okta.
 
 **Status: early development. Browser PKCE and device login, lazy discovery,
 ID-token validation, session coordination, memory storage, and explicitly selected
-plaintext file storage are implemented. Deterministic protocol tests and Keycloak
-integration coverage exercise both flows. Refresh, HTTP and DI integration, other
-providers, packaging, and protected storage remain unfinished; see the
+plaintext file storage, and silent refresh are implemented. Deterministic protocol
+tests and Keycloak integration coverage exercise both flows and refresh. HTTP and DI
+integration, other providers, packaging, and protected storage remain unfinished; see the
 [roadmap](docs/ROADMAP.md).**
 
 ## Packages
@@ -62,12 +62,12 @@ entries; discard those changes (`git checkout -- '*.lock.json'`) rather than com
 See [Core contracts](docs/usage/core-contracts.md), [authenticator composition and
 coordination](docs/usage/authenticator-composition.md), and the
 [compiled consumer example](samples/Bijecta.CliAuth.Sample.Cli/Examples/CoreUsage.cs).
-Browser/device login, local status, usable cached-token acquisition, and logout work through
-the public authenticator. See the [browser walkthrough](docs/usage/browser-login.md)
+Browser/device login, local status, token acquisition with silent refresh
+([ADR 0009](docs/decisions/0009-silent-refresh.md)), and logout work through the public authenticator. See the [browser walkthrough](docs/usage/browser-login.md)
 and [device walkthrough](docs/usage/device-login.md), plus the
 [Keycloak development fixture](samples/keycloak/README.md). Missing selected provider
 capabilities fail explicitly without switching flows. The sample's `demo` command uses
-memory; its `login`, `status`, `list`, and `logout` commands persist sessions in
+memory; its `login`, `status`, `token`, `list`, and `logout` commands persist sessions in
 plaintext files under an explicit `--storage-dir`. `ListSessionsAsync` reports every
 configured profile's status.
 

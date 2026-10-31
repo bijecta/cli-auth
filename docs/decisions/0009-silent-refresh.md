@@ -1,6 +1,6 @@
 # 0009: Silent refresh
 
-Status: Proposed
+Status: Accepted
 
 Date: 2026-10-31 (roadmap milestone 1)
 

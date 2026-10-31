@@ -5,7 +5,8 @@ locks, the clock, and an internal protocol boundary. Public local status, cached
 acquisition, and local logout work. Browser login now uses the real internal adapter;
 see [the walkthrough](browser-login.md). Login commit/race and revocation orchestration
 are also tested with an internal fake. Device login uses the same coordinator;
-see [device login](device-login.md). Refresh and remote revocation remain deferred.
+see [device login](device-login.md). Token acquisition refreshes silently
+([ADR 0009](../decisions/0009-silent-refresh.md)); remote revocation remains deferred.
 
 ## Direct construction
 
@@ -80,13 +81,39 @@ lease before accessing state. Reads are reloaded, not cached in the authenticato
 This lets separate instances observe committed changes in the same backend.
 
 GetStatusAsync classifies local state with TimeProvider and the configured margin.
-It does not call the protocol or browser. GetAccessTokenAsync returns only an active,
+It does not call the protocol or browser. GetAccessTokenAsync returns an active,
 correctly bound token outside the margin. Missing/unrecoverable state requires
-explicit login. A refresh-required session currently returns UnsupportedCapability
-without clearing credentials, retrying, or opening a browser; refresh coordination
-is a follow-up feature.
+explicit login; acquisition never opens a browser.
 
-An orphaned RefreshInProgress is reported as Uncertain by status. Acquisition while
+## Silent refresh
+
+Inside the profile's `ExpiryMargin` (default 60 seconds), GetAccessTokenAsync refreshes
+with the stored refresh token. It holds the session lease through the token request
+and the commit, so simultaneous callers in one or several processes cause one request
+and then reload the committed record, and login or logout waits for the refresh. A
+refresh keeps the session's epoch, publishes the next generation, and keeps the stored
+refresh token unless the provider returns a new one.
+
+Inside the wider `RefreshAhead` margin (default 5 minutes, limited to the last half of
+the token's lifetime, measured from `AccessToken.ObtainedAtUtc`), acquisition tries a
+refresh but returns the still-valid token if that attempt fails transiently.
+
+| Outcome | Session | Result |
+|---|---|---|
+| Success | Next generation committed | The new token |
+| `invalid_grant` | Credential-free ReauthenticationRequired marker | ReauthenticationRequired |
+| Other provider error | Kept | ProtocolFailure with the provider's error code |
+| Network failure, timeout (20 s; 5 s early), 5xx, discovery failure | Kept; the next call retries | Early margin: the current token. Otherwise NetworkFailure or DiscoveryFailed |
+| Caller cancellation | Kept | OperationCanceledException |
+| Commit failure | Unchanged | StorageUnavailable; the new token is not returned |
+| New lifetime within the expiry margin | Committed | TokenLifetimeTooShort, one refresh per call |
+
+An unclear outcome never forces a login: the next call retries with the stored refresh
+token. With a strictly rotating provider, that retry may answer `invalid_grant`, which
+then asks for a login. See [ADR 0009](../decisions/0009-silent-refresh.md).
+
+Refresh never writes RefreshInProgress or Uncertain. A record already in
+RefreshInProgress is reported as Uncertain by status. Acquisition while
 holding the lock converts it to a credential-free Uncertain marker, advances its
 generation, and returns ReauthenticationRequired. It never reuses the previous
 refresh token. Stored issuer/client/scope mismatches fail as StorageCorrupt rather
@@ -110,7 +137,7 @@ The implemented sequence is:
 
 Two competing logins can run interactively at once; the first successful commit
 wins. A generation change alone does not supersede a login when the epoch is still
-the same, allowing later refresh coordination to coexist with explicit login.
+the same, so a refresh committed meanwhile does not supersede an explicit login.
 Cancellation before commit preserves existing state, including when an adapter
 returns a result after ignoring cancellation. Unknown protocol exceptions are
 converted to safe ProtocolFailure errors without response bodies or inner exceptions.

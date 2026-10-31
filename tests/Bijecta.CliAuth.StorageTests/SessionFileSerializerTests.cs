@@ -67,6 +67,23 @@ public sealed class SessionFileSerializerTests
     }
 
     [Fact]
+    public void ObtainedTimeRoundTripsAndOlderRecordsWithoutItStillRead()
+    {
+        var obtained = new DateTimeOffset(2031, 1, 2, 9, 0, 0, TimeSpan.Zero);
+        var session = new StoredSession(7, Epoch, SessionLifecycleState.Active,
+            new AccessToken("synthetic-access", obtained.AddHours(1), ["openid"], obtainedAtUtc: obtained.ToOffset(TimeSpan.FromHours(2))),
+            "synthetic-refresh", new Uri("https://issuer.example.test/Realm/"), "sample-cli", "synthetic-subject");
+        var restored = SessionFileSerializer.Deserialize(Key, SessionFileSerializer.Serialize(Key, session));
+        Assert.Equal(obtained, restored.AccessToken!.ObtainedAtUtc);
+        Assert.Equal(TimeSpan.Zero, restored.AccessToken.ObtainedAtUtc!.Value.Offset);
+
+        // Records written before refresh support have no obtained time.
+        var older = Document();
+        Assert.False(older["accessToken"]!.AsObject().ContainsKey("obtainedAtUtc"));
+        Assert.Null(Decode(older).AccessToken!.ObtainedAtUtc);
+    }
+
+    [Fact]
     public void IntentionalFileSerializationDoesNotChangeCoreDiagnosticRedaction()
     {
         var session = Session();
@@ -110,6 +127,9 @@ public sealed class SessionFileSerializerTests
     [InlineData("wrong_type")]
     [InlineData("expiry_no_offset")]
     [InlineData("expiry_non_utc")]
+    [InlineData("obtained_non_utc")]
+    [InlineData("obtained_after_expiry")]
+    [InlineData("obtained_null")]
     [InlineData("missing_issuer")]
     [InlineData("null_refresh")]
     [InlineData("unknown_field")]
@@ -130,6 +150,9 @@ public sealed class SessionFileSerializerTests
             case "wrong_type": document["accessToken"]!["tokenType"] = "DPoP"; break;
             case "expiry_no_offset": document["accessToken"]!["expiresAtUtc"] = "2031-01-02T12:00:00"; break;
             case "expiry_non_utc": document["accessToken"]!["expiresAtUtc"] = "2031-01-02T12:00:00+02:00"; break;
+            case "obtained_non_utc": document["accessToken"]!["obtainedAtUtc"] = "2031-01-02T09:00:00+02:00"; break;
+            case "obtained_after_expiry": document["accessToken"]!["obtainedAtUtc"] = "2031-01-02T11:00:00Z"; break;
+            case "obtained_null": document["accessToken"]!["obtainedAtUtc"] = null; break;
             case "missing_issuer": document.Remove("issuer"); break;
             case "null_refresh": document["refreshToken"] = null; break;
             case "unknown_field": document["idToken"] = "synthetic-id-token"; break;

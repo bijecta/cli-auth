@@ -118,6 +118,27 @@ public sealed class ConfigurationTests
         Assert.Equal(0, profile.Callback.Port);
         Assert.Equal("/callback/", profile.Callback.Path);
         Assert.Equal(TimeSpan.FromSeconds(60), profile.ExpiryMargin);
+        Assert.Equal(TimeSpan.FromMinutes(5), profile.RefreshAhead);
+    }
+
+    [Theory]
+    [InlineData(0, 59)]
+    [InlineData(120, 119)]
+    [InlineData(60, 1801)]
+    public void RejectsAnEarlyRefreshMarginOutsideTheExpiryMarginAndThirtyMinutes(int marginSeconds, int aheadSeconds)
+    {
+        var error = Assert.Throws<CliAuthException>(() => CoreTestData.Profile(
+            margin: marginSeconds == 0 ? null : TimeSpan.FromSeconds(marginSeconds), refreshAhead: TimeSpan.FromSeconds(aheadSeconds)));
+        Assert.Equal(AuthErrorCode.InvalidConfiguration, error.ErrorCode);
+    }
+
+    [Fact]
+    public void AnEarlyRefreshMarginEqualToTheExpiryMarginOrThirtyMinutesIsAccepted()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(60), CoreTestData.Profile(refreshAhead: TimeSpan.FromSeconds(60)).RefreshAhead);
+        Assert.Equal(TimeSpan.FromMinutes(30), CoreTestData.Profile(refreshAhead: TimeSpan.FromMinutes(30)).RefreshAhead);
+        // The default early margin is never below the largest allowed expiry margin.
+        Assert.Equal(TimeSpan.FromMinutes(5), CoreTestData.Profile(margin: TimeSpan.FromSeconds(300)).RefreshAhead);
     }
 
     private static Task Present(DeviceAuthorizationPrompt prompt, CancellationToken ct) => Task.CompletedTask;

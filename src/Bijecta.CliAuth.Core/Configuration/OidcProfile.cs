@@ -7,7 +7,7 @@ public sealed class OidcProfile
     public OidcProfile(string applicationId, string profileName, Uri issuer, string clientId,
         IEnumerable<string>? scopes = null, PersistenceMode persistence = PersistenceMode.Protected,
         BrowserCallbackOptions? callback = null, bool allowLoopbackHttp = false, TimeSpan? expiryMargin = null,
-        IEnumerable<Uri>? allowedEndpointOrigins = null)
+        IEnumerable<Uri>? allowedEndpointOrigins = null, TimeSpan? refreshAhead = null)
     {
         ApplicationId = ContractValidation.Identifier(applicationId);
         ProfileName = ContractValidation.Identifier(profileName);
@@ -20,6 +20,12 @@ public sealed class OidcProfile
 
         ExpiryMargin = expiryMargin ?? TimeSpan.FromSeconds(60);
         if (ExpiryMargin < TimeSpan.Zero || ExpiryMargin > TimeSpan.FromSeconds(300))
+        {
+            throw new CliAuthException(AuthErrorCode.InvalidConfiguration);
+        }
+
+        RefreshAhead = refreshAhead ?? TimeSpan.FromMinutes(5);
+        if (RefreshAhead < ExpiryMargin || RefreshAhead > TimeSpan.FromMinutes(30))
         {
             throw new CliAuthException(AuthErrorCode.InvalidConfiguration);
         }
@@ -62,4 +68,10 @@ public sealed class OidcProfile
     public IReadOnlyList<Uri> AllowedEndpointOrigins { get; }
     /// <summary>The conservative margin used for cached-token availability.</summary>
     public TimeSpan ExpiryMargin { get; }
+    /// <summary>
+    /// The early-refresh margin, between <see cref="ExpiryMargin"/> and 30 minutes (default 5 minutes). Inside it, token
+    /// acquisition tries a refresh and returns the still-valid token if that attempt fails transiently. It applies only
+    /// to the last half of a token's lifetime; a value equal to <see cref="ExpiryMargin"/> disables early refresh.
+    /// </summary>
+    public TimeSpan RefreshAhead { get; }
 }

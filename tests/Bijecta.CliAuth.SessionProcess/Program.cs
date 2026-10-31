@@ -33,9 +33,10 @@ while (await Console.In.ReadLineAsync(ct) is { } line)
     {
         switch (command[0])
         {
-            case "login" or "login-pause" or "login-stage":
+            case "login" or "login-pause" or "login-stage" or "login-expiring":
                 protocol.Subject = command[1];
                 protocol.Pause = command[0] == "login-pause";
+                protocol.Expiring = command[0] == "login-expiring";
                 stageBeforePublish = command[0] == "login-stage";
                 var login = await auth.LoginAsync("work", new LoginOptions(), ct);
                 Console.WriteLine($"LOGGED-IN {login.Subject}");
@@ -44,7 +45,8 @@ while (await Console.In.ReadLineAsync(ct) is { } line)
                 var status = await auth.GetStatusAsync("work", ct);
                 Console.WriteLine($"STATUS {status.Kind} {status.Subject ?? "-"}");
                 break;
-            case "token":
+            case "token" or "token-pause":
+                protocol.Pause = command[0] == "token-pause";
                 Console.WriteLine($"TOKEN {(await auth.GetAccessTokenAsync("work", ct)).Value}");
                 break;
             case "logout":
@@ -65,17 +67,34 @@ internal sealed class FakeProtocol : IAuthenticationProtocol
 {
     internal string Subject { get; set; } = "";
     internal bool Pause { get; set; }
+    // Issues a token already inside the 60-second expiry margin, so the next acquisition must refresh.
+    internal bool Expiring { get; set; }
 
     public async Task<ValidatedLogin> LoginAsync(OidcProfile profile, LoginOptions options, ISystemBrowser browser, CancellationToken ct)
     {
-        if (Pause)
-        {
-            // Stands in for the user signing in: no session lease is held while the parent races other processes.
-            Console.WriteLine("ENTERED");
-            if (await Console.In.ReadLineAsync(ct) != "resume") { throw new OperationCanceledException(); }
-        }
-        return new ValidatedLogin(new AccessToken("synthetic-access-" + Subject, DateTimeOffset.UtcNow.AddHours(1), profile.Scopes),
-            Subject, profile.Issuer, profile.ClientId, "synthetic-refresh-" + Subject);
+        // Stands in for the user signing in: no session lease is held while the parent races other processes.
+        await PauseAsync(ct);
+        var now = DateTimeOffset.UtcNow;
+        return new ValidatedLogin(new AccessToken("synthetic-access-" + Subject, now.AddSeconds(Expiring ? 30 : 3600), profile.Scopes,
+            obtainedAtUtc: now), Subject, profile.Issuer, profile.ClientId, "synthetic-refresh-" + Subject);
+    }
+
+    public async Task<ValidatedRefresh> RefreshAsync(OidcProfile profile, string refreshToken, string subject,
+        IReadOnlyList<string> grantedScopes, CancellationToken ct)
+    {
+        // Unlike login, refresh runs with the session lease held: other processes wait for it.
+        await PauseAsync(ct);
+        // The process id shows which process performed the refresh; the rotated refresh token proves the commit.
+        var now = DateTimeOffset.UtcNow;
+        return new ValidatedRefresh(new AccessToken($"synthetic-refreshed-{Environment.ProcessId}", now.AddHours(1), grantedScopes,
+            obtainedAtUtc: now), $"synthetic-rotated-{Environment.ProcessId}");
+    }
+
+    private async Task PauseAsync(CancellationToken ct)
+    {
+        if (!Pause) { return; }
+        Console.WriteLine("ENTERED");
+        if (await Console.In.ReadLineAsync(ct) != "resume") { throw new OperationCanceledException(); }
     }
 
     public Task<RevocationOutcome> RevokeRefreshTokenAsync(OidcProfile profile, string refreshToken, CancellationToken ct) =>

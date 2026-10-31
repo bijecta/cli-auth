@@ -142,6 +142,101 @@ public sealed class CrossProcessSessionTests
         await next.ExitAsync();
     }
 
+    [Fact]
+    public async Task TwoProcessesSharingAnExpiringSessionMakeOneRefresh()
+    {
+        using var location = new ProcessTestDirectory();
+        await using var first = await SessionProcess.StartAsync(location.Path);
+        await using var second = await SessionProcess.StartAsync(location.Path);
+
+        Assert.Equal("LOGGED-IN alice", await first.RunAsync("login-expiring alice"));
+        Assert.Equal("STATUS RefreshRequired alice", await second.RunAsync("status"));
+        // The first process holds the session lease through its refresh request (ADR 0009).
+        Assert.Equal("ENTERED", await first.RunAsync("token-pause"));
+        await second.SendAsync("token");
+        await Task.Delay(200, Ct);
+        var refreshed = await first.RunAsync("resume");
+        Assert.StartsWith("TOKEN synthetic-refreshed-", refreshed, StringComparison.Ordinal);
+        // The waiting process reloads the committed record instead of refreshing again.
+        Assert.Equal(refreshed, await second.ReadAsync());
+
+        var record = await ReadRecordAsync(location);
+        Assert.Equal(1, record!.Generation);
+        Assert.Equal("synthetic-rotated-" + refreshed["TOKEN synthetic-refreshed-".Length..], record.RefreshToken);
+        Assert.Empty(location.StrayFiles());
+        await first.ExitAsync();
+        await second.ExitAsync();
+    }
+
+    [Fact]
+    public async Task AProcessKilledMidRefreshLeavesTheSessionForTheNextRunToRefresh()
+    {
+        using var location = new ProcessTestDirectory();
+        await using (var login = await SessionProcess.StartAsync(location.Path))
+        {
+            Assert.Equal("LOGGED-IN alice", await login.RunAsync("login-expiring alice"));
+            await login.ExitAsync();
+        }
+
+        await using (var crashing = await SessionProcess.StartAsync(location.Path))
+        {
+            Assert.Equal("ENTERED", await crashing.RunAsync("token-pause"));
+            await crashing.KillAsync();
+        }
+
+        // No in-progress marker was written: the session and its refresh token are untouched.
+        var survivor = await ReadRecordAsync(location);
+        Assert.Equal(SessionLifecycleState.Active, survivor!.State);
+        Assert.Equal(0, survivor.Generation);
+        Assert.Equal("synthetic-refresh-alice", survivor.RefreshToken);
+
+        await using var next = await SessionProcess.StartAsync(location.Path);
+        Assert.StartsWith("TOKEN synthetic-refreshed-", await next.RunAsync("token"), StringComparison.Ordinal);
+        Assert.Equal(1, (await ReadRecordAsync(location))!.Generation);
+        await next.ExitAsync();
+    }
+
+    [Fact]
+    public async Task LogoutInAnotherProcessWaitsForARunningRefreshAndStillWins()
+    {
+        using var location = new ProcessTestDirectory();
+        await using var refresh = await SessionProcess.StartAsync(location.Path);
+        await using var logout = await SessionProcess.StartAsync(location.Path);
+
+        Assert.Equal("LOGGED-IN alice", await refresh.RunAsync("login-expiring alice"));
+        Assert.Equal("ENTERED", await refresh.RunAsync("token-pause"));
+        await logout.SendAsync("logout");
+        await Task.Delay(200, Ct);
+        Assert.StartsWith("TOKEN synthetic-refreshed-", await refresh.RunAsync("resume"), StringComparison.Ordinal);
+        Assert.Equal("LOGGED-OUT True", await logout.ReadAsync());
+        // The refresh committed first, so it cannot resurrect the session afterwards.
+        Assert.Equal("STATUS None -", await refresh.RunAsync("status"));
+        Assert.Null(await ReadRecordAsync(location));
+        await refresh.ExitAsync();
+        await logout.ExitAsync();
+    }
+
+    [Fact]
+    public async Task ALoginInAnotherProcessDuringARefreshReplacesTheRefreshedSession()
+    {
+        using var location = new ProcessTestDirectory();
+        await using var refresh = await SessionProcess.StartAsync(location.Path);
+        await using var login = await SessionProcess.StartAsync(location.Path);
+
+        Assert.Equal("LOGGED-IN alice", await refresh.RunAsync("login-expiring alice"));
+        Assert.Equal("ENTERED", await refresh.RunAsync("token-pause"));
+        await login.SendAsync("login carol");
+        await Task.Delay(200, Ct);
+        Assert.StartsWith("TOKEN synthetic-refreshed-", await refresh.RunAsync("resume"), StringComparison.Ordinal);
+        Assert.Equal("LOGGED-IN carol", await login.ReadAsync());
+        var record = await ReadRecordAsync(location);
+        Assert.Equal("carol", record!.Subject);
+        Assert.Equal(2, record.Generation);
+        Assert.Equal("TOKEN synthetic-access-carol", await refresh.RunAsync("token"));
+        await refresh.ExitAsync();
+        await login.ExitAsync();
+    }
+
     private static async Task<StoredSession?> ReadRecordAsync(ProcessTestDirectory location) =>
         await new FileTokenStore(location.Path).ReadAsync(SessionProcess.Key, Ct);
 }
