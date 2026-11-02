@@ -6,8 +6,8 @@
 |---|---|
 | Date tested | 2026-11-02 |
 | Provider version, plan, or tier | Duende.IdentityServer 8.0.10, unlicensed development/test mode |
-| Library commit | Hosted run pending (milestone 2, phase 1 PR) |
-| Hosted run | Pending |
+| Library commit | `f793f24` |
+| Hosted run | [41518115392](https://github.com/bijecta/cli-auth/actions/runs/41518115392), job *Keycloak browser and device integration (Linux)*, which also runs the Duende scenarios |
 | Result | See the [compatibility table](README.md) |
 
 The tests host IdentityServer in the test process with an in-memory configuration

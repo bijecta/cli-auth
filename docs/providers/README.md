@@ -9,7 +9,7 @@ new guides start from the [template](_template.md).
 | Provider | Browser PKCE | Device | Refresh | Rotation | Revocation advertised | MFA request | Guide |
 |---|---|---|---|---|---|---|---|
 | Keycloak | ✅ | ✅ | ✅ | Strict ✅ | Yes | not tested | [Keycloak](keycloak.md) |
-| Duende IdentityServer | not tested [2](#duende-2) | not tested [2](#duende-2) | not tested [2](#duende-2) | not tested [2](#duende-2) | Yes | not tested | [Duende](duende.md) |
+| Duende IdentityServer | ✅ | ✅ | ✅ | Strict ✅ | Yes | not tested | [Duende](duende.md) |
 | Okta | not tested | not tested | not tested | not tested | not tested | not tested | — |
 | Auth0 | not tested | not tested | not tested | not tested | not tested | not tested | — |
 | Microsoft Entra ID | not tested | not tested | not tested | not tested | not tested | not tested | — |
@@ -36,6 +36,7 @@ new guides start from the [template](_template.md).
 | Provider | Version or date | Library commit | .NET | Hosted run | Known limits |
 |---|---|---|---|---|---|
 | Keycloak | 26.8.1 (container image tag), 2026-10-31 | `5ef8473` | 10.0 (SDK 10.0.401) | [41254707591](https://github.com/bijecta/cli-auth/actions/runs/41254707591) (push to main) | [1](#keycloak-1) |
+| Duende IdentityServer | 8.0.10, 2026-11-02 | `f793f24` | 10.0 (SDK 10.0.401) | [41518115392](https://github.com/bijecta/cli-auth/actions/runs/41518115392) (pull request #9) | [2](#duende-2) |
 
 ### Notes
 
@@ -43,7 +44,8 @@ new guides start from the [template](_template.md).
 uses a separate client without it. The disposable test realm enables strict rotation; Keycloak's default realm
 setting keeps the old refresh token valid (*Rotates*). See the [guide](keycloak.md#known-limits-and-troubleshooting).
 
-<a id="duende-2"></a>2. Duende IdentityServer 8.0.10: browser, device, refresh with strict rotation, consent denial, and
-session reuse pass locally (2026-11-02); the hosted run on the phase 1 pull request is pending. Any-port loopback
+<a id="duende-2"></a>2. Duende IdentityServer 8.0.10, hosted in the test process: browser, device, refresh with strict
+rotation, consent denial, and session reuse pass on every pull request. Strict rotation needs
+`RefreshTokenUsage = OneTimeOnly`; the server default `ReUse` does not rotate (*None*). Any-port loopback
 redirects need the server's opt-in `AddAppAuthRedirectUriValidator()`. Production use needs a Duende licence. See
 the [guide](duende.md).
