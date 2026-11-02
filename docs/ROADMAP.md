@@ -5,7 +5,7 @@ project is going and what "done" means for each milestone. Detailed checklists f
 an active milestone live in their own plan file (as [storage-plan.md](storage-plan.md)
 did for storage); architecture choices live in [ADRs](decisions/).
 
-Last updated: 2026-11-01.
+Last updated: 2026-11-02.
 
 ## Current focus
 
@@ -20,11 +20,12 @@ Last updated: 2026-11-01.
 - Done: milestone 1 (silent refresh), PR #7, per [ADR 0009](decisions/0009-silent-refresh.md):
   hosted run 41254185595 passed all seven jobs on Ubuntu/Windows/macOS, including the
   process-race refresh tests, the AOT `token` smoke, and Keycloak with strict rotation.
-- Active: milestone 2 (provider compatibility), phase 0 (shared groundwork), on branch
-  `milestone-2/phase-0`, per [ADR 0010](decisions/0010-provider-compatibility.md) section 1. Built
-  and verified locally; not yet committed or pushed, and hosted CI has not run. Next action: the
-  maintainer reviews, then commit and open the phase 0 PR. After it merges, the maintainer creates
-  the `providers` GitHub environment, and phase 1 (Duende IdentityServer) starts with a licence check.
+- Done: milestone 2 phase 0 (shared groundwork), PR #8, per [ADR 0010](decisions/0010-provider-compatibility.md)
+  section 1: hosted run 41502186630 passed all seven required jobs, including the integration job that
+  now also runs the provider harness tests.
+- Active: milestone 2 (provider compatibility). Next action: the maintainer creates the `providers`
+  GitHub environment and its deployment-branch rules; phase 1 (Duende IdentityServer) starts with a
+  check of its current licence terms for development and testing, then the research report.
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
 
 ## Rules for every milestone
@@ -135,7 +136,7 @@ Plan (from the milestone brief): phase 0 shared groundwork; phases 1–6 one pro
 Duende IdentityServer, Okta, Auth0, Entra ID, Google, GitHub (docs only); phase 7 MFA requests; phase 8
 finish the table and README. Decisions extend [ADR 0010](decisions/0010-provider-compatibility.md).
 
-- [ ] Phase 0: shared groundwork (local verification done; PR and hosted run pending)
+- [x] Phase 0: shared groundwork (PR #8)
   - [x] `tests/Bijecta.CliAuth.ProviderTests` in the integration solution: `CLIAUTH_<KEY>_*` settings,
     skip policy (skip when unconfigured, fail when partial or listed in `CLIAUTH_REQUIRED_PROVIDERS`),
     redaction, shared Chromium, `ProviderBrowser`, the five `ProviderScenarios`, and a Keycloak
@@ -144,8 +145,8 @@ finish the table and README. Decisions extend [ADR 0010](decisions/0010-provider
     hosted provider; not a required check.
   - [x] `docs/providers/`: compatibility table and legend, guide template, Keycloak guide.
   - [x] ADR 0010 section 1: verification policy.
-  - [ ] Hosted CI green on the phase 0 PR (the required integration job now also builds and runs the
-    harness tests).
+  - [x] Hosted CI green on the phase 0 PR: run 41502186630, all seven jobs (the required integration job
+    now also builds and runs the harness tests).
 - [ ] Phase 1: Duende IdentityServer
 - [ ] Phase 2: Okta
 - [ ] Phase 3: Auth0
