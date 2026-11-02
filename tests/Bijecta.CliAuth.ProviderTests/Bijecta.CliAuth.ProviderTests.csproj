@@ -7,6 +7,9 @@
   <ItemGroup>
     <PackageReference Include="xunit.v3.mtp-v2" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Playwright" PrivateAssets="all" />
+    <!-- Test-only provider host; development and testing need no Duende licence (ADR 0010). -->
+    <PackageReference Include="Duende.IdentityServer" PrivateAssets="all" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <Using Include="Xunit" />
     <!-- Hosted providers rate-limit logins and share one test user per tenant, so scenarios run one at a time. -->
     <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
