@@ -23,12 +23,11 @@ Last updated: 2026-11-02.
 - Done: milestone 2 phase 0 (shared groundwork), PR #8, per [ADR 0010](decisions/0010-provider-compatibility.md)
   section 1: hosted run 41502186630 passed all seven required jobs, including the integration job that
   now also runs the provider harness tests.
-- Active: milestone 2, phase 1 (Duende IdentityServer) on branch `milestone-2/phase-1-duende`, per
-  [ADR 0010](decisions/0010-provider-compatibility.md) section 2: an in-process IdentityServer 8.0.10 test host
-  (test-only dependency; development/testing need no licence). All six Duende tests pass locally; not yet
-  committed or pushed, hosted CI not run. Next action: maintainer review, then commit, open the phase 1 PR, and
-  record the hosted run in the compatibility table before merging. Still pending from phase 0: the maintainer
-  creates the `providers` GitHub environment before phase 2 (Okta).
+- Done: milestone 2 phase 1 (Duende IdentityServer), PR #9, per
+  [ADR 0010](decisions/0010-provider-compatibility.md) section 2: hosted run 41518115392 passed all seven
+  required jobs; the integration job ran all six Duende tests (46 passed, 5 env-gated skips).
+- Active: milestone 2. Next action: the maintainer creates the `providers` GitHub environment (secrets for
+  hosted providers); then phase 2 (Okta) starts with the research report against Okta's current docs.
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
 
 ## Rules for every milestone
@@ -150,18 +149,18 @@ finish the table and README. Decisions extend [ADR 0010](decisions/0010-provider
   - [x] ADR 0010 section 1: verification policy.
   - [x] Hosted CI green on the phase 0 PR: run 41502186630, all seven jobs (the required integration job
     now also builds and runs the harness tests).
-- [ ] Phase 1: Duende IdentityServer (local verification done; PR and hosted run pending)
+- [x] Phase 1: Duende IdentityServer (PR #9)
   - [x] Research against Duende's docs: any-port loopback via `AddAppAuthRedirectUriValidator()`,
     `OneTimeOnly` strict rotation (default `ReUse`), separate device client, discovery fields. No Core change.
   - [x] In-process fixture with minimal UI; five shared scenarios plus a discovery check pass locally.
   - [x] [Duende guide](providers/duende.md), table row (hosted cells pending), ADR 0010 section 2.
-  - [ ] Hosted CI green on the phase 1 PR; then mark the table cells ✅ with the run.
+  - [x] Hosted CI green on the phase 1 PR (run 41518115392); table cells marked ✅.
 
 Phase 1 evidence (local, macOS, 2026-11-02): both solutions restore locked, build with zero warnings, and pass the
 format check; deterministic suite 461 tests, 457 passed, 4 Windows-only skipped; integration solution 51 tests,
 46 passed (11 Keycloak, 29 harness, 6 Duende), 5 Keycloak reference scenarios skipped without variables. Of four
 integration-solution runs, the first failed in the disposable Keycloak suite's fixture setup before any test (the
-message was not captured; that suite alone then passed 11/11) and the next three passed. Watch the hosted job.
+message was not captured; that suite alone then passed 11/11) and the next three passed. The hosted job passed.
 - [ ] Phase 2: Okta
 - [ ] Phase 3: Auth0
 - [ ] Phase 4: Microsoft Entra ID

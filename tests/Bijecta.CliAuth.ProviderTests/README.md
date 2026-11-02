@@ -117,4 +117,5 @@ Hosted providers run in `.github/workflows/providers.yml`, never on pull request
   34 passed, 5 skipped (the Keycloak reference scenarios without variables).
 - First runs failed with every login stopping after sign-in: Chromium dropped IdentityServer's `SameSite=None`
   cookie over HTTP. The fixture now uses `Lax`. Discovery does not advertise `acr_values_supported`.
-- Hosted CI is pending on the phase 1 pull request.
+- Hosted: run 41518115392 (pull request #9) passed with the same counts: 46 passed, 5 skipped in the integration
+  solution, including all six Duende tests.

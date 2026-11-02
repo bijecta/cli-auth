@@ -77,7 +77,8 @@ configured profile's status.
 | Provider | Browser | Device | Refresh | Guide |
 |---|---|---|---|---|
 | Keycloak | ✅ | ✅ | ✅ | [Keycloak](docs/providers/keycloak.md) |
-| Duende IdentityServer, Okta, Auth0, Entra ID, Google | not tested | not tested | not tested | — |
+| Duende IdentityServer | ✅ | ✅ | ✅ | [Duende](docs/providers/duende.md) |
+| Okta, Auth0, Entra ID, Google | not tested | not tested | not tested | — |
 | GitHub | not tested | not tested | not tested | — |
 
 ✅ means a passing hosted CI run. Details, the legend, and the tested versions are in the
