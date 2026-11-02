@@ -1,8 +1,8 @@
 # 0010: Provider compatibility
 
-Status: Accepted (section 1)
+Status: Accepted (sections 1–2)
 
-Date: 2026-11-01 (roadmap milestone 2, phase 0)
+Date: 2026-11-01 (roadmap milestone 2, phase 0); section 2: 2026-11-02 (phase 1)
 
 ## Context
 
@@ -49,7 +49,7 @@ This ADR records each provider-compatibility decision as a section, instead of o
 - Provider tests run on **Linux only**. Provider behaviour does not depend on the client OS, and the deterministic,
   process, and Native AOT jobs already cover Core on Ubuntu, Windows, and macOS. This is how milestone 2 meets the
   roadmap's three-OS rule.
-- Self-hosted providers that need no secrets (Keycloak, and Duende IdentityServer if its licence allows) run on pull
+- Self-hosted providers that need no secrets (Keycloak, and Duende IdentityServer per section 2) run on pull
   requests in the existing required integration job instead.
 
 ### Browser automation and bot challenges
@@ -71,7 +71,47 @@ This ADR records each provider-compatibility decision as a section, instead of o
 - **Run hosted providers on all three OSes:** triples provider logins and rate-limit exposure without exercising
   any OS-specific code.
 
+## 2. Duende IdentityServer as an in-process test host (phase 1)
+
+### Decision
+
+- Test Duende IdentityServer by hosting it **in the provider test process**: an ASP.NET Core host on an ephemeral
+  IPv4 loopback port with in-memory clients, a generated test user and password, and a per-run RSA signing key. Duende
+  has no official container image, and an in-process host needs neither Docker nor secrets, so the Duende scenarios
+  run on every pull request in the existing required integration job.
+- `Duende.IdentityServer` 8.0.10 and the ASP.NET Core shared framework are **test-only** dependencies of
+  `Bijecta.CliAuth.ProviderTests`. Core's tested graph is unchanged (Microsoft IdentityModel 8.23.0,
+  Duende.IdentityModel 8.1.0), and no package or sample references IdentityServer.
+- **Licence.** Duende IdentityServer is source-available. Duende's documentation allows evaluation, development,
+  test environments, and personal projects without a licence; production needs a licence or an approved Community
+  Edition licence, and redistribution a separate one (checked 2026-11-02:
+  [docs](https://docs.duendesoftware.com/identityserver),
+  [Community Edition](https://duendesoftware.com/products/communityedition)). The host is test-only and never
+  shipped, so no licence key is used. The project's own future licence does not change Duende's terms. The guide
+  tells users that their production server needs its own licence. Recheck the terms on every IdentityServer upgrade.
+- IdentityServer has no UI, so the tests include minimal login, consent, and device-verification pages built on its
+  interaction services. Host logs are discarded because they can contain URLs, codes, and tokens.
+
+### What the provider needed
+
+No Core change. Each difference was configuration:
+
+- Redirect URIs match exactly by default; the opt-in `AddAppAuthRedirectUriValidator()` with a client registered as
+  `http://127.0.0.1` and PKCE required accepts any port and path, including Core's `/callback/`.
+- `RefreshTokenUsage` defaults to `ReUse` (no rotation); `OneTimeOnly` is strict, and the default refresh token
+  service rejects a consumed token with `invalid_grant`. The fixture uses `OneTimeOnly`.
+- The default `SameSite=None` session cookie is dropped by Chromium over HTTP, so the loopback test host uses `Lax`.
+- Discovery advertises the device and revocation endpoints and S256, but not `acr_values_supported`. MFA requests
+  (phase 7) must therefore not depend on that discovery field; the returned `acr` claim is what counts.
+
+### Alternatives considered
+
+- **A separate host project or container:** keeps ASP.NET Core out of the test project, but adds a process to start
+  and supervise, or an image to maintain, for no difference in what is tested.
+- **IdentityServer4:** Apache-2.0, but archived and unpatched; not representative of current servers.
+- **Duende's UI templates:** realistic pages, but far more test code to keep current than three minimal forms.
+
 ## Later sections
 
-Each provider phase adds its decisions here: the Auth0 audience option, the Entra multi-tenant issuer rule, the
+Each later provider phase adds its decisions here: the Auth0 audience option, the Entra multi-tenant issuer rule, the
 policy on installed-app client secrets, and the MFA request options and claim validation (phase 7).

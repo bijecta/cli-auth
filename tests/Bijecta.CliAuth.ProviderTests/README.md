@@ -13,6 +13,12 @@ self-hosted servers. The rules (skip policy, evidence, bot challenges) are in
 | `HarnessTests/` | Unit tests for the skip policy and redaction; they need no browser or provider |
 | `<Provider>/` | One folder per provider: its `ProviderDefinition`, a sealed `ProviderScenarios` subclass, and its `ILoginPage` with the page steps. Page steps never go into Core |
 
+`Duende/` hosts Duende IdentityServer 8 in the test process (`DuendeFixture`), with minimal login, consent, and
+device pages (`DuendeUi`). It needs no variables or Docker, so it always runs, including in the required CI job.
+Its settings come from the fixture through `ResolveSettings()` instead of the environment, and it is not in
+`ProviderCatalog` (which lists environment-configured providers). It also checks the discovery document.
+See the [Duende guide](../../docs/providers/duende.md).
+
 `Keycloak/` is the harness's reference provider. It runs against the developer fixture in `samples/keycloak`. The
 CI-required, disposable Keycloak coverage stays in `Bijecta.CliAuth.KeycloakTests`.
 
@@ -82,7 +88,8 @@ provider is configured. To run the Keycloak reference scenarios, start the devel
 
 1. Add `<Provider>/<Provider>Scenarios.cs` with a `ProviderDefinition` (name, key, rotation, consent and session
    capabilities, default scopes, required extras), a sealed `ProviderScenarios` subclass, and an `ILoginPage`.
-   Override `CreateProfile` only for provider-neutral options such as `allowedEndpointOrigins`.
+   Override `CreateProfile` only for provider-neutral options such as `allowedEndpointOrigins`. A self-hosted
+   provider with its own fixture overrides `ResolveSettings()` and implements `IClassFixture<TFixture>`.
 2. Add the definition to `ProviderCatalog.All`.
 3. Add the provider's secrets to the `providers` environment, map them in `.github/workflows/providers.yml`, and
    add the provider to the workflow's required list.
@@ -92,7 +99,8 @@ provider is configured. To run the Keycloak reference scenarios, start the devel
 ## CI
 
 `Bijecta.CliAuth.IntegrationTests.slnx` contains this project, so the required Linux job
-*Keycloak browser and device integration* builds it and runs the harness tests (provider scenarios skip there).
+*Keycloak browser and device integration* builds it and runs the harness tests and the Duende scenarios
+(environment-configured provider scenarios skip there).
 Hosted providers run in `.github/workflows/providers.yml`, never on pull requests and not as a required check.
 
 ## Validation — 2026-11-01 (local, macOS)
@@ -102,3 +110,11 @@ Hosted providers run in `.github/workflows/providers.yml`, never on pull request
   device login, refresh (*Rotates*), and SSO second login passed; consent denial skipped, as declared.
 - An earlier device run timed out once at the full 3-minute test limit, before the Keycloak page step handled
   the device consent page. It did not recur in the three runs after the fix. This is local evidence only.
+
+## Validation — 2026-11-02 (local, macOS): Duende IdentityServer 8.0.10
+
+- The six Duende tests (five scenarios and the discovery check) pass; three consecutive runs of the whole project:
+  34 passed, 5 skipped (the Keycloak reference scenarios without variables).
+- First runs failed with every login stopping after sign-in: Chromium dropped IdentityServer's `SameSite=None`
+  cookie over HTTP. The fixture now uses `Lax`. Discovery does not advertise `acr_values_supported`.
+- Hosted CI is pending on the phase 1 pull request.

@@ -11,8 +11,15 @@ public abstract class ProviderScenarios(BrowserHost host, ITestOutputHelper outp
 {
     private const string ProfileName = "work";
 
+    protected ITestOutputHelper Output => output;
     protected abstract ProviderDefinition Definition { get; }
     protected abstract ILoginPage LoginPage { get; }
+
+    /// <summary>
+    /// The provider's settings. Hosted providers read environment variables under the skip policy; a provider whose
+    /// fixture creates its own server and clients (such as a self-hosted one) returns the fixture's settings instead.
+    /// </summary>
+    protected virtual ProviderSettings ResolveSettings() => ProviderEnvironment.Require(Definition);
 
     /// <summary>The profile for one client. Providers override this for options such as allowed endpoint origins.</summary>
     protected virtual OidcProfile CreateProfile(ProviderSettings settings, string clientId) =>
@@ -23,7 +30,7 @@ public abstract class ProviderScenarios(BrowserHost host, ITestOutputHelper outp
     public async Task BrowserLoginCachesTokenReportsStatusAndLogsOut()
     {
         var ct = TestContext.Current.CancellationToken;
-        var settings = ProviderEnvironment.Require(Definition);
+        var settings = ResolveSettings();
         await using var browser = await ProviderBrowser.CreateAsync(host, LoginPage, settings, ct);
         var auth = new CliAuthenticator([CreateProfile(settings, settings.ClientId)], new MemoryTokenStore(), browser: browser);
         var login = await LoginAsync(auth, new LoginOptions(), browser, ct);
@@ -47,7 +54,7 @@ public abstract class ProviderScenarios(BrowserHost host, ITestOutputHelper outp
     public async Task DeviceLoginCompletesWithoutBrowserLaunchAndCachesToken()
     {
         var ct = TestContext.Current.CancellationToken;
-        var settings = ProviderEnvironment.Require(Definition);
+        var settings = ResolveSettings();
         var auth = new CliAuthenticator([CreateProfile(settings, settings.DeviceClientId)], new MemoryTokenStore(),
             browser: new ForbiddenBrowser());
         var presented = 0;
@@ -70,7 +77,7 @@ public abstract class ProviderScenarios(BrowserHost host, ITestOutputHelper outp
     public async Task ExpiringTokenIsRefreshedSilently()
     {
         var ct = TestContext.Current.CancellationToken;
-        var settings = ProviderEnvironment.Require(Definition);
+        var settings = ResolveSettings();
         await using var browser = await ProviderBrowser.CreateAsync(host, LoginPage, settings, ct);
         var clock = new ShiftedClock();
         var store = new MemoryTokenStore();
@@ -118,7 +125,7 @@ public abstract class ProviderScenarios(BrowserHost host, ITestOutputHelper outp
     public async Task DeniedConsentSavesNoSession()
     {
         var ct = TestContext.Current.CancellationToken;
-        var settings = ProviderEnvironment.Require(Definition);
+        var settings = ResolveSettings();
         if (!Definition.CanDenyConsent)
         {
             Assert.Skip($"{Definition.Name} declares no consent-denial path for this test client.");
@@ -135,7 +142,7 @@ public abstract class ProviderScenarios(BrowserHost host, ITestOutputHelper outp
     public async Task SecondLoginReusesProviderSession()
     {
         var ct = TestContext.Current.CancellationToken;
-        var settings = ProviderEnvironment.Require(Definition);
+        var settings = ResolveSettings();
         if (!Definition.ReusesProviderSession)
         {
             Assert.Skip($"{Definition.Name} declares that a second login does not reuse the provider session.");
