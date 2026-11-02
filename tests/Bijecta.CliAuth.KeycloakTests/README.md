@@ -82,9 +82,11 @@ failures can report bounded startup-only logs with both generated passwords reda
 
 The existing Bijecta.CliAuth.slnx continues to run the deterministic tests on
 Windows, Linux, and macOS without container/browser prerequisites. The separate
-Bijecta.CliAuth.IntegrationTests.slnx references the same Core project and this
-integration project. Its dedicated Linux CI job restores locked packages, builds,
-installs Chromium, runs all eleven tests, and checks formatting.
+Bijecta.CliAuth.IntegrationTests.slnx references the same Core project, this
+integration project, and the [provider tests](../Bijecta.CliAuth.ProviderTests/README.md).
+Its dedicated Linux CI job restores locked packages, builds, installs Chromium, runs
+all eleven tests here plus the provider harness tests (provider scenarios skip there),
+and checks formatting.
 
 The extra solution is an execution boundary, not a separate implementation or a
 NuGet package. It keeps heavyweight infrastructure out of the normal test command.

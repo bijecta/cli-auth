@@ -4,5 +4,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Bijecta.CliAuth.KeycloakTests/Bijecta.CliAuth.KeycloakTests.csproj" />
+    <Project Path="tests/Bijecta.CliAuth.ProviderTests/Bijecta.CliAuth.ProviderTests.csproj" />
   </Folder>
 </Solution>
