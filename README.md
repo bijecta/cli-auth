@@ -48,6 +48,7 @@ The OS matrix checks library and sample behavior on each host; it does not produ
 three different versions of the portable Core package. NuGet packing/release checks
 will be a separate step. Keycloak/Playwright tests use a separate integration solution
 and Linux CI job; see [integration prerequisites and commands](tests/Bijecta.CliAuth.KeycloakTests/README.md).
+Other providers use the [provider tests](tests/Bijecta.CliAuth.ProviderTests/README.md) and their own workflow.
 The fixture helper is managed .NET code, with Native AOT disabled. On each OS, CI
 builds every library with `-p:IsAotCompatible=true` (trim and AOT warnings are errors),
 publishes the sample with Native AOT, and smoke-tests the binary:
@@ -70,6 +71,17 @@ capabilities fail explicitly without switching flows. The sample's `demo` comman
 memory; its `login`, `status`, `token`, `list`, and `logout` commands persist sessions in
 plaintext files under an explicit `--storage-dir`. `ListSessionsAsync` reports every
 configured profile's status.
+
+## Provider compatibility
+
+| Provider | Browser | Device | Refresh | Guide |
+|---|---|---|---|---|
+| Keycloak | ✅ | ✅ | ✅ | [Keycloak](docs/providers/keycloak.md) |
+| Duende IdentityServer, Okta, Auth0, Entra ID, Google | not tested | not tested | not tested | — |
+| GitHub | not tested | not tested | not tested | — |
+
+✅ means a passing hosted CI run. Details, the legend, and the tested versions are in the
+[compatibility table](docs/providers/README.md).
 
 ## Roadmap
 

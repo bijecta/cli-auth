@@ -5,7 +5,7 @@ project is going and what "done" means for each milestone. Detailed checklists f
 an active milestone live in their own plan file (as [storage-plan.md](storage-plan.md)
 did for storage); architecture choices live in [ADRs](decisions/).
 
-Last updated: 2026-10-31.
+Last updated: 2026-11-01.
 
 ## Current focus
 
@@ -20,8 +20,11 @@ Last updated: 2026-10-31.
 - Done: milestone 1 (silent refresh), PR #7, per [ADR 0009](decisions/0009-silent-refresh.md):
   hosted run 41254185595 passed all seven jobs on Ubuntu/Windows/macOS, including the
   process-race refresh tests, the AOT `token` smoke, and Keycloak with strict rotation.
-- Next: milestone 2 (provider compatibility). Discuss its scope and order before
-  starting; nothing is in progress.
+- Active: milestone 2 (provider compatibility), phase 0 (shared groundwork), on branch
+  `milestone-2/phase-0`, per [ADR 0010](decisions/0010-provider-compatibility.md) section 1. Built
+  and verified locally; not yet committed or pushed, and hosted CI has not run. Next action: the
+  maintainer reviews, then commit and open the phase 0 PR. After it merges, the maintainer creates
+  the `providers` GitHub environment, and phase 1 (Duende IdentityServer) starts with a licence check.
 - Not now: packaging and releases (milestone 4), protected storage (milestone 5).
 
 ## Rules for every milestone
@@ -127,6 +130,36 @@ Prove the library works with real OAuth/OIDC providers, not only Keycloak.
 
 Done when: each listed provider has a passing integration run (or a documented
 reason it cannot be automated) and a published guide.
+
+Plan (from the milestone brief): phase 0 shared groundwork; phases 1–6 one provider per PR in the order
+Duende IdentityServer, Okta, Auth0, Entra ID, Google, GitHub (docs only); phase 7 MFA requests; phase 8
+finish the table and README. Decisions extend [ADR 0010](decisions/0010-provider-compatibility.md).
+
+- [ ] Phase 0: shared groundwork (local verification done; PR and hosted run pending)
+  - [x] `tests/Bijecta.CliAuth.ProviderTests` in the integration solution: `CLIAUTH_<KEY>_*` settings,
+    skip policy (skip when unconfigured, fail when partial or listed in `CLIAUTH_REQUIRED_PROVIDERS`),
+    redaction, shared Chromium, `ProviderBrowser`, the five `ProviderScenarios`, and a Keycloak
+    reference provider for the developer fixture.
+  - [x] `.github/workflows/providers.yml`: Linux, `providers` environment, dispatch only until the first
+    hosted provider; not a required check.
+  - [x] `docs/providers/`: compatibility table and legend, guide template, Keycloak guide.
+  - [x] ADR 0010 section 1: verification policy.
+  - [ ] Hosted CI green on the phase 0 PR (the required integration job now also builds and runs the
+    harness tests).
+- [ ] Phase 1: Duende IdentityServer
+- [ ] Phase 2: Okta
+- [ ] Phase 3: Auth0
+- [ ] Phase 4: Microsoft Entra ID
+- [ ] Phase 5: Google
+- [ ] Phase 6: GitHub (docs only)
+- [ ] Phase 7: MFA requests
+- [ ] Phase 8: finish the table, guides, and README
+
+Phase 0 evidence (local, macOS, 2026-11-01): integration solution Release build without warnings; the
+provider project ran 29 harness tests passed and 5 scenarios skipped with no variables set; against the
+developer Keycloak fixture (26.8.1, realm re-imported), three consecutive runs passed browser, device,
+refresh, and SSO scenarios, with consent denial skipped as declared. One earlier device run hit the
+3-minute test timeout before the page step handled Keycloak's device consent page; it did not recur.
 
 ### 3. Integration layer
 

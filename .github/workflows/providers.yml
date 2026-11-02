@@ -1,0 +1,50 @@
+name: Hosted providers
+
+# Real logins against hosted OAuth/OIDC providers (ADR 0010). Never runs on pull requests: fork PRs get no
+# secrets, and external providers are too flaky for a required check. Each provider phase adds its matrix entry
+# and secrets, and then the nightly schedule and push-to-main triggers below are enabled. Until the first hosted
+# provider exists, the workflow runs only on manual dispatch.
+on:
+  workflow_dispatch:
+    inputs:
+      required-providers:
+        description: Comma-separated provider names whose tests must run (missing secrets fail instead of skipping).
+        required: false
+        default: ""
+  # schedule:
+  #   - cron: "17 3 * * *"
+  # push:
+  #   branches: [main]
+
+# One run per provider set at a time, so two runs never share a tenant's test user; runs are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.required-providers || 'all' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  providers:
+    name: Hosted provider integration (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Provider secrets live in this environment; its deployment-branch rules decide which refs may use them.
+    environment: providers
+    env:
+      CLIAUTH_REQUIRED_PROVIDERS: ${{ inputs.required-providers }}
+      # Each provider phase maps its secrets here, for example:
+      # CLIAUTH_OKTA_ISSUER: ${{ secrets.CLIAUTH_OKTA_ISSUER }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore locked integration dependencies
+        run: dotnet restore Bijecta.CliAuth.IntegrationTests.slnx --locked-mode
+      - name: Build integration tests
+        run: dotnet build Bijecta.CliAuth.IntegrationTests.slnx --configuration Release --no-restore
+      - name: Install Playwright Chromium and system dependencies
+        run: pwsh tests/Bijecta.CliAuth.ProviderTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Test against hosted providers
+        run: dotnet test --project tests/Bijecta.CliAuth.ProviderTests/Bijecta.CliAuth.ProviderTests.csproj --configuration Release --no-build
