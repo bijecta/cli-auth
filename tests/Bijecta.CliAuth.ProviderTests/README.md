@@ -129,4 +129,5 @@ Hosted providers run in `.github/workflows/providers.yml`, never on pull request
   mismatch"), a test-user password that differed from the env file, and the refresh test's shifted clock beyond
   Auth0's default 10 h ID token lifetime (fixed by **ID Token Expiration** 86400 on the browser application).
   Auth0's device page asks to confirm the code before signing in.
-- Hosted: pending the first `providers` workflow run with the Auth0 secrets.
+- Hosted: [41724808616](https://github.com/bijecta/cli-auth/actions/runs/41724808616) (push to main, `aee5e20`) passed with the same counts: 45 tests, 39 passed, 6 skipped;
+  only Auth0 consent denial skipped among the Auth0 scenarios.
