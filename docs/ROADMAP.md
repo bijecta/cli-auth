@@ -26,15 +26,15 @@ Last updated: 2026-11-03.
 - Done: milestone 2 phase 1 (Duende IdentityServer), PR #9, per
   [ADR 0010](decisions/0010-provider-compatibility.md) section 2: hosted run 41518115392 passed all seven
   required jobs; the integration job ran all six Duende tests (46 passed, 5 env-gated skips).
-- Active: milestone 2, phase 3 (Auth0) on branch `milestone-2/phase-3-auth0`, moved ahead of Okta with the
-  maintainer's approval (2026-11-03) because Okta's free plan requires a business sign-up email. Decisions are in
-  [ADR 0010](decisions/0010-provider-compatibility.md) section 3: fixed callback port 43823, rotation with a 0 s
-  overlap (*Strict*), consent denial skipped, test-only ID Token Expiration 86400; no Core change. `Auth0Scenarios`,
-  the guide, the table note, and the workflow secrets (schedule and push-to-main enabled, Auth0 required) are
-  written, uncommitted. Local runs (2026-11-03, macOS): 39 passed, 6 skipped, twice; no hosted run yet. Open
-  question for the maintainer: an option to send Auth0's `audience` (public API change). Next action: the
-  maintainer approves commit and PR, creates the `providers` environment with the five `CLIAUTH_AUTH0_*` secrets
-  before merge, then a dispatched hosted run provides the evidence for the table.
+- Done: milestone 2 phase 3 (Auth0), PR #10 (merged as `aee5e20`), per
+  [ADR 0010](decisions/0010-provider-compatibility.md) section 3, moved ahead of Okta with the maintainer's approval
+  because Okta's free plan requires a business sign-up email. Hosted run 41724808616 (push to main) passed: 45
+  tests, 39 passed, 6 skipped (Keycloak dev-fixture scenarios, Auth0 consent denial). The providers workflow now
+  runs nightly and on push to main with Auth0 required. GitHub registered the workflow only when this merge
+  changed it; the dispatch-only copy merged in phase 0 was never registered.
+- Active: milestone 2. Open question for the maintainer: an option to send Auth0's `audience` (public API change,
+  ADR 0010 section 3). Next action: the maintainer chooses the next phase: phase 4 (Microsoft Entra ID), or Okta
+  once a business email is available.
 - Paused: phase 2 (Okta). Decisions recorded 2026-11-02 (custom `default` server, fixed port 43823 with a one-time
   any-port probe, rotation with a 0 s grace period, consent denial via a separate app if Okta allows it); resumes
   when the maintainer has a business email for the Integrator Free Plan.
@@ -172,7 +172,7 @@ format check; deterministic suite 461 tests, 457 passed, 4 Windows-only skipped;
 integration-solution runs, the first failed in the disposable Keycloak suite's fixture setup before any test (the
 message was not captured; that suite alone then passed 11/11) and the next three passed. The hosted job passed.
 - [ ] Phase 2: Okta (paused: free-plan sign-up needs a business email; Auth0 goes first)
-- [ ] Phase 3: Auth0 (local runs pass; awaiting the hosted run)
+- [x] Phase 3: Auth0 (hosted run 41724808616)
 - [ ] Phase 4: Microsoft Entra ID
 - [ ] Phase 5: Google
 - [ ] Phase 6: GitHub (docs only)

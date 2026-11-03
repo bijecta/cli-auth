@@ -4,10 +4,10 @@
 
 | | |
 |---|---|
-| Date tested | 2026-11-03 (local runs only so far) |
+| Date tested | 2026-11-03 |
 | Provider version, plan, or tier | Auth0 free plan, EU region, Universal Login |
-| Library commit | Pending: the branch adding the Auth0 scenarios |
-| Hosted run | Pending: the first `providers` workflow run |
+| Library commit | `aee5e20` |
+| Hosted run | [41724808616](https://github.com/bijecta/cli-auth/actions/runs/41724808616), *Hosted provider integration (Linux)*, push to main |
 | Result | See the [compatibility table](README.md) |
 
 ## Prerequisites
