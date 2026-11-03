@@ -111,7 +111,43 @@ No Core change. Each difference was configuration:
 - **IdentityServer4:** Apache-2.0, but archived and unpatched; not representative of current servers.
 - **Duende's UI templates:** realistic pages, but far more test code to keep current than three minimal forms.
 
+## 3. Auth0 (phase 3)
+
+### Decision
+
+- **Order.** Auth0 runs before Okta (maintainer's decision, 2026-11-03): Okta's Integrator Free Plan requires a
+  business sign-up email, which the maintainer does not have yet. Okta's research and decisions stand, and its
+  phase resumes once an account exists.
+- Test a hosted free-plan tenant with two first-party **Native** applications (browser and device) on the default
+  database connection, and a dedicated test user with MFA off. Bot Detection is off on the test tenant; the tests
+  never get past a challenge (section 1).
+- Auth0 has no any-port loopback redirect, so the browser application registers one fixed port (43823) and the
+  tests pass it as `CLIAUTH_AUTH0_CALLBACK_PORT`. The port is not a secret and is set in the workflow; the issuer,
+  client IDs, and test-user credentials are `providers` environment secrets.
+- Rotation is on with a 0 s overlap period, so the tests verify *Strict* rotation (`invalid_grant` on reuse).
+- Consent denial is skipped: first-party applications get no consent screen, and a third-party application needs
+  tenant-wide changes for no extra library coverage.
+- The test application's **ID Token Expiration** is raised to 86400 s. Without an `audience`, Auth0 issues a 24 h
+  access token and a 10 h ID token; the refresh test's shifted clock would otherwise see the refreshed ID token as
+  expired. Core's ID token lifetime check is correct and unchanged.
+
+### What the provider needed
+
+No Core change:
+
+- The issuer ends in `/` (`https://<tenant>.<region>.auth0.com/`); Core compares the configured issuer exactly and
+  trims the slash only to build the discovery URL, so configuring the slash is enough.
+- Discovery advertises the device and revocation endpoints and S256 (and `plain`, which Core never sends).
+- The device verification page asks the user to confirm the code before signing in; that is page automation only.
+
+### Open question: `audience`
+
+Core cannot send Auth0's `audience` authorization parameter, so the access token it obtains is only for Auth0's
+`/userinfo`. A CLI that calls its own API needs an access token for that API. Adding a provider-neutral option for
+extra authorization parameters (or a resource indicator, RFC 8707) is a public API change and is left for a
+separate decision; the guide documents the limit.
+
 ## Later sections
 
-Each later provider phase adds its decisions here: the Auth0 audience option, the Entra multi-tenant issuer rule, the
-policy on installed-app client secrets, and the MFA request options and claim validation (phase 7).
+Each later provider phase adds its decisions here: the Entra multi-tenant issuer rule, the policy on installed-app
+client secrets, and the MFA request options and claim validation (phase 7).

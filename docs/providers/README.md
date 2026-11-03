@@ -11,7 +11,7 @@ new guides start from the [template](_template.md).
 | Keycloak | ✅ | ✅ | ✅ | Strict ✅ | Yes | not tested | [Keycloak](keycloak.md) |
 | Duende IdentityServer | ✅ | ✅ | ✅ | Strict ✅ | Yes | not tested | [Duende](duende.md) |
 | Okta | not tested | not tested | not tested | not tested | not tested | not tested | — |
-| Auth0 | not tested | not tested | not tested | not tested | not tested | not tested | — |
+| Auth0 | not tested [3](#auth0-3) | not tested [3](#auth0-3) | not tested [3](#auth0-3) | not tested [3](#auth0-3) | Yes | not tested | [Auth0](auth0.md) |
 | Microsoft Entra ID | not tested | not tested | not tested | not tested | not tested | not tested | — |
 | Google | not tested | not tested | not tested | not tested | not tested | not tested | — |
 | GitHub | not tested | not tested | not tested | not tested | not tested | not tested | — |
@@ -49,3 +49,8 @@ rotation, consent denial, and session reuse pass on every pull request. Strict r
 `RefreshTokenUsage = OneTimeOnly`; the server default `ReUse` does not rotate (*None*). Any-port loopback
 redirects need the server's opt-in `AddAppAuthRedirectUriValidator()`. Production use needs a Duende licence. See
 the [guide](duende.md).
+
+<a id="auth0-3"></a>3. Auth0 (free plan): **local runs only** so far (2026-11-03, macOS): browser, device, refresh
+with strict rotation, and session reuse passed; consent denial is skipped (first-party applications get no consent
+screen). The cells stay "not tested" until a hosted `providers` run. Auth0 needs a fixed registered callback port,
+and the library cannot yet send the `audience` parameter. See the [guide](auth0.md).

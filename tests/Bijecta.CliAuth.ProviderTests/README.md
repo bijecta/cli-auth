@@ -119,3 +119,14 @@ Hosted providers run in `.github/workflows/providers.yml`, never on pull request
   cookie over HTTP. The fixture now uses `Lax`. Discovery does not advertise `acr_values_supported`.
 - Hosted: run 41518115392 (pull request #9) passed with the same counts: 46 passed, 5 skipped in the integration
   solution, including all six Duende tests.
+
+## Validation — 2026-11-03 (local, macOS): Auth0 free plan
+
+- Against the maintainer's tenant with variables from `.env.auth0`: the provider project ran 45 tests, 39 passed,
+  6 skipped (5 Keycloak reference scenarios without variables, and Auth0 consent denial), twice in a row. Without
+  the Auth0 variables: 35 passed, 10 skipped.
+- First runs failed on tenant settings, not the library: a callback URL that did not match exactly ("Callback URL
+  mismatch"), a test-user password that differed from the env file, and the refresh test's shifted clock beyond
+  Auth0's default 10 h ID token lifetime (fixed by **ID Token Expiration** 86400 on the browser application).
+  Auth0's device page asks to confirm the code before signing in.
+- Hosted: pending the first `providers` workflow run with the Auth0 secrets.
