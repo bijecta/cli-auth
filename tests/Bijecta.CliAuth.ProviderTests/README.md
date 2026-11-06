@@ -144,4 +144,5 @@ Hosted providers run in `.github/workflows/providers.yml`, never on pull request
   `ProviderDefinition.RefreshAhead`); the page automation typed into the hidden password panel (pages are now
   identified by heading); the newer device confirmation page uses `#idBtn_Approve`. The test user first hit
   "More information required" until password-reset registration and the other MFA prompts were turned off.
-- Hosted: pending (`CLIAUTH_ENTRA_*` secrets in the `providers` environment).
+- Hosted: [42305996399](https://github.com/bijecta/cli-auth/actions/runs/42305996399) (dispatch on pull request #12, `78036ad`, Auth0 and Entra required) passed: 50 tests, 43
+  passed, 7 skipped; only Entra consent denial skipped among the Entra scenarios.

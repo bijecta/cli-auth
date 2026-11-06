@@ -4,10 +4,10 @@
 
 | | |
 |---|---|
-| Date tested | 2026-11-06 (local runs; hosted run pending) |
+| Date tested | 2026-11-06 |
 | Provider version, plan, or tier | Microsoft Entra ID Free (the directory that comes with an Azure account), single tenant, v2.0 endpoints |
-| Library commit | pending (phase 4 pull request) |
-| Hosted run | pending |
+| Library commit | `78036ad` |
+| Hosted run | [42305996399](https://github.com/bijecta/cli-auth/actions/runs/42305996399), *Hosted provider integration (Linux)*, dispatch on pull request #12 |
 | Result | See the [compatibility table](README.md) |
 
 ## Prerequisites

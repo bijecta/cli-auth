@@ -57,9 +57,11 @@ Last updated: 2026-11-06.
   Docs done (2026-11-06): [Entra guide](providers/entra.md), compatibility-table row (cells stay "not tested" until a
   hosted run, footnote 4), ADR 0010 section 4, test README validation entry; `providers.yml` maps the five
   `CLIAUTH_ENTRA_*` secrets and requires `Auth0,Entra` by default. Without provider variables the provider project
-  ran 50 tests, 35 passed, 15 skipped. Nothing committed yet. Next action: the maintainer adds the five
-  `CLIAUTH_ENTRA_*` secrets to the `providers` environment (required before merge, since push-to-main runs then
-  require Entra); commit and open the phase 4 PR; after merge, record the hosted run and mark the Entra cells ✅.
+  ran 50 tests, 35 passed, 15 skipped. Committed as `26d4209` (Core scope change) and `78036ad` (Entra scenarios,
+  docs, workflow) on PR #12; the five `CLIAUTH_ENTRA_*` secrets are in the `providers` environment. Hosted run
+  42305996399 (dispatch on the PR branch, `78036ad`, Auth0 and Entra required) passed: 50 tests, 43 passed, 7
+  skipped; the Entra table cells are now ✅. Next action: the seven required checks pass on PR #12, then the
+  maintainer merges it; the push-to-main providers run then requires Entra.
   Still open from phase 3: an option to send Auth0's `audience` (public API change).
 - Paused: phase 2 (Okta). Decisions recorded 2026-11-02 (custom `default` server, fixed port 43823 with a one-time
   any-port probe, rotation with a 0 s grace period, consent denial via a separate app if Okta allows it); resumes
@@ -199,7 +201,7 @@ integration-solution runs, the first failed in the disposable Keycloak suite's f
 message was not captured; that suite alone then passed 11/11) and the next three passed. The hosted job passed.
 - [ ] Phase 2: Okta (paused: free-plan sign-up needs a business email; Auth0 goes first)
 - [x] Phase 3: Auth0 (hosted run 41724808616)
-- [ ] Phase 4: Microsoft Entra ID (scenarios, guide, ADR section, and workflow done locally; secrets, PR, and hosted run pending)
+- [x] Phase 4: Microsoft Entra ID (PR #12; hosted run 42305996399)
 - [ ] Phase 5: Google
 - [ ] Phase 6: GitHub (docs only)
 - [ ] Phase 7: MFA requests
