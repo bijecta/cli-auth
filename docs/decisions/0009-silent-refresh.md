@@ -142,8 +142,13 @@ The protocol layer validates a refresh response with the same rules as a login
 token response:
 
 - token type `Bearer` and a positive `expires_in`;
-- returned scopes must be a subset of the session's granted scopes; an absent
-  `scope` keeps the current granted scopes (RFC 6749 §5.1);
+- the recorded scopes are the returned scopes that the session already holds;
+  an absent `scope` keeps the current granted scopes (RFC 6749 §5.1). Returned
+  scopes beyond the session's grant are ignored rather than rejected, so a
+  refresh can narrow the grant but never widen it (RFC 6749 §6). Login applies
+  the same rule against the profile's requested scopes. (Amended 2026-11-06:
+  rejecting such responses broke Microsoft Entra ID, which lists every scope the
+  app has consent for, RFC 6749 §3.3; see ADR 0010.);
 - an ID token, if returned, is fully validated (signature, issuer, audience,
   times), and its `sub` must equal the session's subject (OIDC Core §12.2). A
   mismatch is a `ProtocolFailure` and keeps the session;

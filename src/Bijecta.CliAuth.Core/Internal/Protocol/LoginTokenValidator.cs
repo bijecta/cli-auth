@@ -78,11 +78,11 @@ internal sealed class LoginTokenValidator(TimeProvider _time, ProviderDiscovery 
         if (root.TryGetProperty("scope", out _))
         {
             var scope = ProtocolJson.Required(root, "scope");
-            granted = ContractValidation.Scopes(scope.Split(' '), false, AuthErrorCode.ProtocolFailure);
-            if (granted.Any(s => !allowedScopes.Contains(s, StringComparer.Ordinal)))
-            {
-                throw new CliAuthException(AuthErrorCode.ProtocolFailure);
-            }
+            // A provider may grant scopes that were not requested (RFC 6749 3.3); Microsoft Entra ID lists every scope
+            // the app has consent for. Those are ignored rather than rejected, so the recorded set never exceeds the
+            // allowed one: the profile's scopes at login, and the session's granted scopes on refresh (RFC 6749 6).
+            granted = ContractValidation.Scopes(scope.Split(' '), false, AuthErrorCode.ProtocolFailure)
+                .Where(s => allowedScopes.Contains(s, StringComparer.Ordinal)).ToArray().AsReadOnly();
         }
 
         return new AccessToken(value, expiresAt, granted, obtainedAtUtc: started);

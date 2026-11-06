@@ -87,7 +87,8 @@ output suppressed. Native desktop behavior still needs manual verification.
 After validation, access expiry is calculated from the **token request start**, not
 response receipt. This conservatively counts network time against the token lifetime.
 An absent scope response inherits the requested scopes; a present one may narrow
-but cannot expand them. The result must outlive the profile's expiry margin. The
+them. Granted scopes that were not requested (Microsoft Entra ID lists every scope
+the app has consent for) are ignored, so the recorded set never exceeds the request. The result must outlive the profile's expiry margin. The
 coordinator saves credentials before returning safe login metadata.
 
 ## Verification and limits
