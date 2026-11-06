@@ -147,7 +147,52 @@ Core cannot send Auth0's `audience` authorization parameter, so the access token
 extra authorization parameters (or a resource indicator, RFC 8707) is a public API change and is left for a
 separate decision; the guide documents the limit.
 
+## 4. Microsoft Entra ID (phase 4)
+
+### Decision
+
+- Test a single-tenant app in a free Entra directory (an Azure account's Default Directory). There are two
+  public-client registrations (browser and device) with admin consent for `openid profile offline_access
+  User.Read`, and a cloud-only member test user with no MFA registration. Security defaults, password-reset
+  registration, and registration campaigns are off for that user, so sign-in never stops at "More information
+  required" (section 1: the tests never get past an interactive challenge).
+- **Single tenant only.** Core compares the issuer exactly, and the `common`/`organizations` discovery documents
+  report a `https://login.microsoftonline.com/{tenantid}/v2.0` template, which no configured issuer equals.
+  Supporting multi-tenant apps would need a per-provider issuer rule in Core, which section 1 rules out. It is
+  not planned.
+- Entra ignores the port of a loopback redirect URI, so one manifest entry, `http://127.0.0.1/callback/`, serves
+  any port. The tests still pass 43823 (`CLIAUTH_ENTRA_CALLBACK_PORT`, set in the workflow) to match Auth0.
+- Refresh tokens rotate, but the used one stays valid (*Rotates*).
+- Consent denial is skipped: with admin consent the user is never asked.
+- **Refresh test.** Access tokens last 60–90 minutes and the ID token 1 hour. Raising the ID token lifetime (as for
+  Auth0) needs an Entra premium licence. Instead, `ProviderDefinition` gained an optional `RefreshAhead`, and for
+  Entra the refresh scenario sets a 30-minute early-refresh window and moves the clock into it, rather than to
+  just before access-token expiry. It still proves a silent refresh commits the next generation; Core's ID token
+  lifetime check is unchanged.
+
+### What the provider needed
+
+One Core change, approved by the maintainer on 2026-11-06:
+
+- **Granted scopes that were not requested are ignored instead of rejected.** Entra's token responses list every
+  delegated permission the app has consent for, whatever was requested (RFC 6749 §3.3 allows a different granted
+  scope). Core used to fail such logins with `ProtocolFailure`. It now records the requested scopes the provider
+  granted. On refresh, it records the returned scopes the session already holds, so a refresh still never widens
+  the grant (RFC 6749 §6). The stored-session checks against the profile's scopes are unchanged. ADR 0009's
+  response rules are amended accordingly.
+
+No Core change for the rest:
+
+- The device `verification_uri` is `https://login.microsoft.com/device`, not on the issuer's host
+  (`login.microsoftonline.com`). The existing `allowedEndpointOrigins` option covers it. The sample CLI has no
+  flag for that option yet.
+- Discovery has no `code_challenge_methods_supported` and no `revocation_endpoint`. Core accepts the first, and
+  revocation is deferred.
+- Sign-in pages keep inactive panels in the DOM, so the page automation identifies each page by its visible
+  heading. The device confirmation page changed to "Approve sign-in on another device" (`#idBtn_Approve`), and the
+  automation handles both versions.
+
 ## Later sections
 
-Each later provider phase adds its decisions here: the Entra multi-tenant issuer rule, the policy on installed-app
-client secrets, and the MFA request options and claim validation (phase 7).
+Each later provider phase adds its decisions here: the policy on installed-app client secrets (Google), and the MFA
+request options and claim validation (phase 7).

@@ -12,7 +12,7 @@ new guides start from the [template](_template.md).
 | Duende IdentityServer | ✅ | ✅ | ✅ | Strict ✅ | Yes | not tested | [Duende](duende.md) |
 | Okta | not tested | not tested | not tested | not tested | not tested | not tested | — |
 | Auth0 | ✅ | ✅ | ✅ | Strict ✅ | Yes | not tested | [Auth0](auth0.md) |
-| Microsoft Entra ID | not tested | not tested | not tested | not tested | not tested | not tested | — |
+| Microsoft Entra ID | ✅ | ✅ | ✅ | Rotates ✅ | No | not tested | [Entra ID](entra.md) |
 | Google | not tested | not tested | not tested | not tested | not tested | not tested | — |
 | GitHub | not tested | not tested | not tested | not tested | not tested | not tested | — |
 
@@ -38,6 +38,7 @@ new guides start from the [template](_template.md).
 | Keycloak | 26.8.1 (container image tag), 2026-10-31 | `5ef8473` | 10.0 (SDK 10.0.401) | [41254707591](https://github.com/bijecta/cli-auth/actions/runs/41254707591) (push to main) | [1](#keycloak-1) |
 | Duende IdentityServer | 8.0.10, 2026-11-02 | `f793f24` | 10.0 (SDK 10.0.401) | [41518115392](https://github.com/bijecta/cli-auth/actions/runs/41518115392) (pull request #9) | [2](#duende-2) |
 | Auth0 | Free plan (EU region), 2026-11-03 | `aee5e20` | 10.0 (SDK 10.0.401) | [41724808616](https://github.com/bijecta/cli-auth/actions/runs/41724808616) (push to main) | [3](#auth0-3) |
+| Microsoft Entra ID | Free directory, single tenant, 2026-11-06 | `78036ad` | 10.0 (SDK 10.0.401) | [42305996399](https://github.com/bijecta/cli-auth/actions/runs/42305996399) (dispatch on pull request #12) | [4](#entra-4) |
 
 ### Notes
 
@@ -55,3 +56,9 @@ the [guide](duende.md).
 overlap), and session reuse pass; consent denial is skipped (first-party applications get no consent screen).
 Auth0 needs a fixed registered callback port, and the library cannot yet send the `audience` parameter, so the
 access token is for Auth0's `/userinfo` only. See the [guide](auth0.md).
+
+<a id="entra-4"></a>4. Microsoft Entra ID (free directory, single tenant): browser, device, refresh (*Rotates*), and
+session reuse pass; consent denial is skipped (admin consent). Only single-tenant issuers work, because the `common` and `organizations` issuers are
+templates. The device `verification_uri` is on another host and must be in `allowedEndpointOrigins`. Granted
+scopes that were not requested are ignored. The refresh test uses the early-refresh window because the 1 h ID
+token expires before the access token. See the [guide](entra.md).

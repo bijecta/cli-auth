@@ -56,7 +56,7 @@ public sealed class RefreshProtocolTests
     }
 
     [Fact]
-    public async Task ANarrowerScopeIsStoredAndAWiderScopeIsRejected()
+    public async Task ANarrowerScopeIsStoredAndAWiderScopeIsNotRecorded()
     {
         using var f = new BrowserFixture();
         await SeedAsync(f, TimeSpan.FromSeconds(30));
@@ -64,12 +64,22 @@ public sealed class RefreshProtocolTests
         await f.Auth().GetAccessTokenAsync("work", Ct);
         Assert.Equal(["openid"], (await ReadAsync(f))!.AccessToken!.GrantedScopes);
 
+        // Scopes beyond the session's grant are ignored (RFC 6749 6), whether or not the profile requested them.
+        f.Time.Advance(TimeSpan.FromHours(1));
+        f.ChangeTokens = t => { t["scope"] = "openid profile admin"; return t; };
+        var narrowed = (await ReadAsync(f))!;
+        await f.Auth().GetAccessTokenAsync("work", Ct);
+        var refreshed = (await ReadAsync(f))!;
+        Assert.Equal(narrowed.Generation + 1, refreshed.Generation);
+        Assert.Equal(["openid"], refreshed.AccessToken!.GrantedScopes);
+
         using var wider = new BrowserFixture();
         var seeded = await SeedAsync(wider, TimeSpan.FromSeconds(30));
         wider.ChangeTokens = t => { t["scope"] = "openid profile admin"; return t; };
-        var error = await Assert.ThrowsAsync<CliAuthException>(() => wider.Auth().GetAccessTokenAsync("work", Ct));
-        Assert.Equal(AuthErrorCode.ProtocolFailure, error.ErrorCode);
-        Assert.Equal(seeded.Generation, (await ReadAsync(wider))!.Generation);
+        await wider.Auth().GetAccessTokenAsync("work", Ct);
+        var widened = (await ReadAsync(wider))!;
+        Assert.Equal(seeded.Generation + 1, widened.Generation);
+        Assert.Equal(seeded.AccessToken!.GrantedScopes, widened.AccessToken!.GrantedScopes);
     }
 
     [Theory]

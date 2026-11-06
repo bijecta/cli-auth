@@ -131,3 +131,18 @@ Hosted providers run in `.github/workflows/providers.yml`, never on pull request
   Auth0's device page asks to confirm the code before signing in.
 - Hosted: [41724808616](https://github.com/bijecta/cli-auth/actions/runs/41724808616) (push to main, `aee5e20`) passed with the same counts: 45 tests, 39 passed, 6 skipped;
   only Auth0 consent denial skipped among the Auth0 scenarios.
+
+## Validation — 2026-11-06 (local, macOS): Microsoft Entra ID free directory
+
+- Against the maintainer's single-tenant directory: the four Entra scenarios pass (consent denial skipped, as
+  declared) in five runs. With Auth0 and Entra configured, the integration solution ran 61 tests: 54 passed and 7
+  skipped (5 Keycloak reference scenarios without variables, and Auth0 and Entra consent denial). Without any
+  provider variables, the provider project ran 50 tests: 35 passed, 15 skipped.
+- First runs found these, all fixed: Core rejected Entra's extra granted scopes (now ignored, ADR 0009 amended);
+  the device `verification_uri` is on `login.microsoft.com` (added to `allowedEndpointOrigins`); the refresh
+  test's shifted clock passed the 1 h ID token (the scenario now uses the early-refresh window,
+  `ProviderDefinition.RefreshAhead`); the page automation typed into the hidden password panel (pages are now
+  identified by heading); the newer device confirmation page uses `#idBtn_Approve`. The test user first hit
+  "More information required" until password-reset registration and the other MFA prompts were turned off.
+- Hosted: [42305996399](https://github.com/bijecta/cli-auth/actions/runs/42305996399) (dispatch on pull request #12, `78036ad`, Auth0 and Entra required) passed: 50 tests, 43
+  passed, 7 skipped; only Entra consent denial skipped among the Entra scenarios.

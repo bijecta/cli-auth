@@ -88,7 +88,6 @@ public sealed class BrowserLoginTests
     [InlineData("zero_expiry")]
     [InlineData("negative_expiry")]
     [InlineData("wrong_type")]
-    [InlineData("expanded_scopes")]
     [InlineData("empty_refresh")]
     public async Task InvalidTokenEnvelopeCannotCreateSession(string scenario)
     {
@@ -118,9 +117,6 @@ public sealed class BrowserLoginTests
                 case "wrong_type":
                     token["token_type"] = "DPoP";
                     break;
-                case "expanded_scopes":
-                    token["scope"] = "openid admin";
-                    break;
                 case "empty_refresh":
                     token["refresh_token"] = "";
                     break;
@@ -149,6 +145,19 @@ public sealed class BrowserLoginTests
         var token = await auth.GetAccessTokenAsync("work", Ct);
         Assert.Equal(f.Time.GetUtcNow().AddSeconds(120.5), token.ExpiresAtUtc);
         Assert.Equal(["openid"], token.GrantedScopes);
+    }
+
+    // Providers such as Microsoft Entra ID list every scope the app has consent for; unrequested ones are not recorded.
+    [Fact]
+    public async Task UnrequestedGrantedScopesAreIgnored()
+    {
+        using var f = new BrowserFixture();
+        f.ChangeTokens = t => { t["scope"] = "admin openid User.Read"; return t; };
+        var auth = f.Auth();
+        var login = await auth.LoginAsync("work", new LoginOptions(), Ct);
+        Assert.Equal(["openid"], login.GrantedScopes);
+        Assert.Equal(["openid"], (await auth.GetAccessTokenAsync("work", Ct)).GrantedScopes);
+        Assert.Equal(SessionStatusKind.Available, (await auth.GetStatusAsync("work", Ct)).Kind);
     }
 
     [Fact]
