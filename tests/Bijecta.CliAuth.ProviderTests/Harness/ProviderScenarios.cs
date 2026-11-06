@@ -24,7 +24,8 @@ public abstract class ProviderScenarios(BrowserHost host, ITestOutputHelper outp
     /// <summary>The profile for one client. Providers override this for options such as allowed endpoint origins.</summary>
     protected virtual OidcProfile CreateProfile(ProviderSettings settings, string clientId) =>
         new("cliauth-provider-tests", ProfileName, settings.Issuer, clientId, settings.Scopes, PersistenceMode.MemoryOnly,
-            new BrowserCallbackOptions(settings.CallbackPort), allowLoopbackHttp: settings.Issuer.Scheme == Uri.UriSchemeHttp);
+            new BrowserCallbackOptions(settings.CallbackPort), allowLoopbackHttp: settings.Issuer.Scheme == Uri.UriSchemeHttp,
+            refreshAhead: Definition.RefreshAhead);
 
     [Fact(Timeout = 120_000)]
     public async Task BrowserLoginCachesTokenReportsStatusAndLogsOut()
@@ -72,7 +73,8 @@ public abstract class ProviderScenarios(BrowserHost host, ITestOutputHelper outp
         Assert.True((await auth.LogoutAsync(ProfileName, new LogoutOptions(), ct)).LocalSessionRemoved);
     }
 
-    // Instead of waiting for expiry, the authenticator's clock is moved into the hard margin (as the Keycloak suite does).
+    // Instead of waiting for expiry, the authenticator's clock is moved into the hard margin (as the Keycloak suite does),
+    // or, for a provider that declares RefreshAhead, five minutes into its early-refresh window.
     [Fact(Timeout = 120_000)]
     public async Task ExpiringTokenIsRefreshedSilently()
     {
@@ -89,8 +91,12 @@ public abstract class ProviderScenarios(BrowserHost host, ITestOutputHelper outp
         Assert.True(loggedIn.RefreshToken is not null,
             $"{Definition.Name} issued no refresh token. Check the requested scopes (for example offline_access) and the client's grants.");
 
-        clock.Offset = login.ExpiresAtUtc - DateTimeOffset.UtcNow - TimeSpan.FromSeconds(30);
-        Assert.Equal(SessionStatusKind.RefreshRequired, (await auth.GetStatusAsync(ProfileName, ct)).Kind);
+        var early = Definition.RefreshAhead;
+        clock.Offset = login.ExpiresAtUtc - DateTimeOffset.UtcNow -
+            (early is { } ahead ? ahead - TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(30));
+        // Inside the early window the cached token is still usable; token acquisition refreshes it anyway.
+        Assert.Equal(early is null ? SessionStatusKind.RefreshRequired : SessionStatusKind.Available,
+            (await auth.GetStatusAsync(ProfileName, ct)).Kind);
         var refreshed = await auth.GetAccessTokenAsync(ProfileName, ct);
         Assert.NotEqual(loggedIn.AccessToken!.Value, refreshed.Value);
         var afterRefresh = (await store.ReadAsync(key, ct))!;

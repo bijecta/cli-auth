@@ -9,7 +9,7 @@ on:
       required-providers:
         description: Comma-separated provider names whose tests must run (missing secrets fail instead of skipping).
         required: false
-        default: "Auth0"
+        default: "Auth0,Entra"
   schedule:
     - cron: "17 3 * * *"
   push:
@@ -17,7 +17,7 @@ on:
 
 # One run per provider set at a time, so two runs never share a tenant's test user; runs are never cancelled.
 concurrency:
-  group: ${{ github.workflow }}-${{ inputs.required-providers || 'Auth0' }}
+  group: ${{ github.workflow }}-${{ inputs.required-providers || 'Auth0,Entra' }}
   cancel-in-progress: false
 
 permissions:
@@ -32,7 +32,7 @@ jobs:
     environment: providers
     env:
       # Scheduled and push runs have no inputs: every hosted provider is required there.
-      CLIAUTH_REQUIRED_PROVIDERS: ${{ inputs.required-providers || 'Auth0' }}
+      CLIAUTH_REQUIRED_PROVIDERS: ${{ inputs.required-providers || 'Auth0,Entra' }}
       CLIAUTH_AUTH0_ISSUER: ${{ secrets.CLIAUTH_AUTH0_ISSUER }}
       CLIAUTH_AUTH0_CLIENT_ID: ${{ secrets.CLIAUTH_AUTH0_CLIENT_ID }}
       CLIAUTH_AUTH0_DEVICE_CLIENT_ID: ${{ secrets.CLIAUTH_AUTH0_DEVICE_CLIENT_ID }}
@@ -40,6 +40,13 @@ jobs:
       CLIAUTH_AUTH0_PASSWORD: ${{ secrets.CLIAUTH_AUTH0_PASSWORD }}
       # The registered loopback callback port (docs/providers/auth0.md); not a secret.
       CLIAUTH_AUTH0_CALLBACK_PORT: "43823"
+      CLIAUTH_ENTRA_ISSUER: ${{ secrets.CLIAUTH_ENTRA_ISSUER }}
+      CLIAUTH_ENTRA_CLIENT_ID: ${{ secrets.CLIAUTH_ENTRA_CLIENT_ID }}
+      CLIAUTH_ENTRA_DEVICE_CLIENT_ID: ${{ secrets.CLIAUTH_ENTRA_DEVICE_CLIENT_ID }}
+      CLIAUTH_ENTRA_USERNAME: ${{ secrets.CLIAUTH_ENTRA_USERNAME }}
+      CLIAUTH_ENTRA_PASSWORD: ${{ secrets.CLIAUTH_ENTRA_PASSWORD }}
+      # Entra ignores the loopback port (docs/providers/entra.md); fixed only to match Auth0. Not a secret.
+      CLIAUTH_ENTRA_CALLBACK_PORT: "43823"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

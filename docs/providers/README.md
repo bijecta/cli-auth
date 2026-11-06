@@ -12,7 +12,7 @@ new guides start from the [template](_template.md).
 | Duende IdentityServer | ✅ | ✅ | ✅ | Strict ✅ | Yes | not tested | [Duende](duende.md) |
 | Okta | not tested | not tested | not tested | not tested | not tested | not tested | — |
 | Auth0 | ✅ | ✅ | ✅ | Strict ✅ | Yes | not tested | [Auth0](auth0.md) |
-| Microsoft Entra ID | not tested | not tested | not tested | not tested | not tested | not tested | — |
+| Microsoft Entra ID | not tested[⁴](#entra-4) | not tested | not tested | not tested (*Rotates* locally) | No | not tested | [Entra ID](entra.md) |
 | Google | not tested | not tested | not tested | not tested | not tested | not tested | — |
 | GitHub | not tested | not tested | not tested | not tested | not tested | not tested | — |
 
@@ -55,3 +55,10 @@ the [guide](duende.md).
 overlap), and session reuse pass; consent denial is skipped (first-party applications get no consent screen).
 Auth0 needs a fixed registered callback port, and the library cannot yet send the `audience` parameter, so the
 access token is for Auth0's `/userinfo` only. See the [guide](auth0.md).
+
+<a id="entra-4"></a>4. Microsoft Entra ID (free directory, single tenant): local runs on 2026-11-06 passed browser,
+device, refresh (*Rotates*), and session reuse; consent denial is skipped (admin consent). The cells change to ✅
+once a hosted run passes. Only single-tenant issuers work, because the `common` and `organizations` issuers are
+templates. The device `verification_uri` is on another host and must be in `allowedEndpointOrigins`. Granted
+scopes that were not requested are ignored. The refresh test uses the early-refresh window because the 1 h ID
+token expires before the access token. See the [guide](entra.md).

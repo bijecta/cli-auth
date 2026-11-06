@@ -5,7 +5,7 @@ project is going and what "done" means for each milestone. Detailed checklists f
 an active milestone live in their own plan file (as [storage-plan.md](storage-plan.md)
 did for storage); architecture choices live in [ADRs](decisions/).
 
-Last updated: 2026-11-03.
+Last updated: 2026-11-06.
 
 ## Current focus
 
@@ -32,9 +32,35 @@ Last updated: 2026-11-03.
   tests, 39 passed, 6 skipped (Keycloak dev-fixture scenarios, Auth0 consent denial). The providers workflow now
   runs nightly and on push to main with Auth0 required. GitHub registered the workflow only when this merge
   changed it; the dispatch-only copy merged in phase 0 was never registered.
-- Active: milestone 2. Open question for the maintainer: an option to send Auth0's `audience` (public API change,
-  ADR 0010 section 3). Next action: the maintainer chooses the next phase: phase 4 (Microsoft Entra ID), or Okta
-  once a business email is available.
+- Active: milestone 2, phase 4 (Microsoft Entra ID) on branch `milestone-2/phase-4-entra`. Tenant set up
+  2026-11-06 in the maintainer's Default Directory (security defaults off, cloud-only test user, browser and device
+  single-tenant public-client apps with admin consent; local values in the git-ignored `.env.entraid`).
+  `tests/Bijecta.CliAuth.ProviderTests/Entra/EntraScenarios.cs` added and registered in `ProviderCatalog`. First live
+  runs (local, macOS, 2026-11-06): browser login, device login, silent refresh, and session reuse pass (4 passed,
+  consent denial skipped as declared), three consecutive runs; the whole provider project with Auth0 and Entra
+  configured ran 50 tests, 43 passed, 7 skipped, 0 failed; integration format check clean. Confirmed quirks (one Core
+  change, the rest in test configuration): the discovered single-tenant issuer matches exactly; the loopback port is ignored
+  (one manifest entry `http://127.0.0.1/callback/` serves the fixed port 43823); the device `verification_uri` is
+  `https://login.microsoft.com/device`, outside the issuer origin, so the profile adds it to `allowedEndpointOrigins`;
+  token responses list every consented scope (`User.Read email openid profile`), which Core used to reject as
+  unrequested: with the maintainer's approval (2026-11-06) Core now ignores granted scopes that were not requested
+  (login: against the profile's scopes; refresh: against the session's grant, so a refresh still never widens it),
+  amending ADR 0009 and `docs/usage/browser-login.md`, and Entra requests plain `profile offline_access`; access
+  tokens live about 71 min against a 1 h ID token, so the harness gained an optional `ProviderDefinition.RefreshAhead` and the refresh scenario moves the clock into the
+  early-refresh window (30 min) for Entra; refresh tokens rotate (*Rotates*). Login pages are told apart by heading
+  because Entra keeps inactive panels in the DOM; the newer device page ("Approve sign-in on another device") uses
+  `#idBtn_Approve`/`#idBtn_Cancel`. Verification after the scope change (local, macOS, 2026-11-06): deterministic
+  solution 461 tests, 457 passed, 4 Windows-only skipped (protocol tests 168, including the new
+  `UnrequestedGrantedScopesAreIgnored` and the reworked refresh scope test); integration solution with Auth0 and
+  Entra configured 61 tests, 54 passed, 7 skipped; Entra suite passed twice more; both format checks clean. Open:
+  confirming single-tenant only and the `RefreshAhead` variant (both implemented and recorded in ADR 0010 section 4).
+  Docs done (2026-11-06): [Entra guide](providers/entra.md), compatibility-table row (cells stay "not tested" until a
+  hosted run, footnote 4), ADR 0010 section 4, test README validation entry; `providers.yml` maps the five
+  `CLIAUTH_ENTRA_*` secrets and requires `Auth0,Entra` by default. Without provider variables the provider project
+  ran 50 tests, 35 passed, 15 skipped. Nothing committed yet. Next action: the maintainer adds the five
+  `CLIAUTH_ENTRA_*` secrets to the `providers` environment (required before merge, since push-to-main runs then
+  require Entra); commit and open the phase 4 PR; after merge, record the hosted run and mark the Entra cells ✅.
+  Still open from phase 3: an option to send Auth0's `audience` (public API change).
 - Paused: phase 2 (Okta). Decisions recorded 2026-11-02 (custom `default` server, fixed port 43823 with a one-time
   any-port probe, rotation with a 0 s grace period, consent denial via a separate app if Okta allows it); resumes
   when the maintainer has a business email for the Integrator Free Plan.
@@ -173,7 +199,7 @@ integration-solution runs, the first failed in the disposable Keycloak suite's f
 message was not captured; that suite alone then passed 11/11) and the next three passed. The hosted job passed.
 - [ ] Phase 2: Okta (paused: free-plan sign-up needs a business email; Auth0 goes first)
 - [x] Phase 3: Auth0 (hosted run 41724808616)
-- [ ] Phase 4: Microsoft Entra ID
+- [ ] Phase 4: Microsoft Entra ID (scenarios, guide, ADR section, and workflow done locally; secrets, PR, and hosted run pending)
 - [ ] Phase 5: Google
 - [ ] Phase 6: GitHub (docs only)
 - [ ] Phase 7: MFA requests
