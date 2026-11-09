@@ -5,7 +5,7 @@ project is going and what "done" means for each milestone. Detailed checklists f
 an active milestone live in their own plan file (as [storage-plan.md](storage-plan.md)
 did for storage); architecture choices live in [ADRs](decisions/).
 
-Last updated: 2026-11-06.
+Last updated: 2026-11-09.
 
 ## Current focus
 
@@ -32,37 +32,41 @@ Last updated: 2026-11-06.
   tests, 39 passed, 6 skipped (Keycloak dev-fixture scenarios, Auth0 consent denial). The providers workflow now
   runs nightly and on push to main with Auth0 required. GitHub registered the workflow only when this merge
   changed it; the dispatch-only copy merged in phase 0 was never registered.
-- Active: milestone 2, phase 4 (Microsoft Entra ID) on branch `milestone-2/phase-4-entra`. Tenant set up
-  2026-11-06 in the maintainer's Default Directory (security defaults off, cloud-only test user, browser and device
-  single-tenant public-client apps with admin consent; local values in the git-ignored `.env.entraid`).
-  `tests/Bijecta.CliAuth.ProviderTests/Entra/EntraScenarios.cs` added and registered in `ProviderCatalog`. First live
-  runs (local, macOS, 2026-11-06): browser login, device login, silent refresh, and session reuse pass (4 passed,
-  consent denial skipped as declared), three consecutive runs; the whole provider project with Auth0 and Entra
-  configured ran 50 tests, 43 passed, 7 skipped, 0 failed; integration format check clean. Confirmed quirks (one Core
-  change, the rest in test configuration): the discovered single-tenant issuer matches exactly; the loopback port is ignored
-  (one manifest entry `http://127.0.0.1/callback/` serves the fixed port 43823); the device `verification_uri` is
-  `https://login.microsoft.com/device`, outside the issuer origin, so the profile adds it to `allowedEndpointOrigins`;
-  token responses list every consented scope (`User.Read email openid profile`), which Core used to reject as
-  unrequested: with the maintainer's approval (2026-11-06) Core now ignores granted scopes that were not requested
-  (login: against the profile's scopes; refresh: against the session's grant, so a refresh still never widens it),
-  amending ADR 0009 and `docs/usage/browser-login.md`, and Entra requests plain `profile offline_access`; access
-  tokens live about 71 min against a 1 h ID token, so the harness gained an optional `ProviderDefinition.RefreshAhead` and the refresh scenario moves the clock into the
-  early-refresh window (30 min) for Entra; refresh tokens rotate (*Rotates*). Login pages are told apart by heading
-  because Entra keeps inactive panels in the DOM; the newer device page ("Approve sign-in on another device") uses
-  `#idBtn_Approve`/`#idBtn_Cancel`. Verification after the scope change (local, macOS, 2026-11-06): deterministic
-  solution 461 tests, 457 passed, 4 Windows-only skipped (protocol tests 168, including the new
-  `UnrequestedGrantedScopesAreIgnored` and the reworked refresh scope test); integration solution with Auth0 and
-  Entra configured 61 tests, 54 passed, 7 skipped; Entra suite passed twice more; both format checks clean. Open:
-  confirming single-tenant only and the `RefreshAhead` variant (both implemented and recorded in ADR 0010 section 4).
-  Docs done (2026-11-06): [Entra guide](providers/entra.md), compatibility-table row (cells stay "not tested" until a
-  hosted run, footnote 4), ADR 0010 section 4, test README validation entry; `providers.yml` maps the five
-  `CLIAUTH_ENTRA_*` secrets and requires `Auth0,Entra` by default. Without provider variables the provider project
-  ran 50 tests, 35 passed, 15 skipped. Committed as `26d4209` (Core scope change) and `78036ad` (Entra scenarios,
-  docs, workflow) on PR #12; the five `CLIAUTH_ENTRA_*` secrets are in the `providers` environment. Hosted run
-  42305996399 (dispatch on the PR branch, `78036ad`, Auth0 and Entra required) passed: 50 tests, 43 passed, 7
-  skipped; the Entra table cells are now ✅. Next action: the seven required checks pass on PR #12, then the
-  maintainer merges it; the push-to-main providers run then requires Entra.
-  Still open from phase 3: an option to send Auth0's `audience` (public API change).
+- Done: milestone 2 phase 4 (Microsoft Entra ID), PR #12 (merged as `8f76f5b`), per
+  [ADR 0010](decisions/0010-provider-compatibility.md) section 4: single-tenant directory, browser, device, refresh
+  (*Rotates*), and session reuse pass; consent denial skipped (admin consent). One Core change, approved by the
+  maintainer: granted scopes that were not requested are ignored instead of rejected (ADR 0009 amended). Hosted runs
+  42305996399 (dispatch on the PR branch) and 42306759178 (push to main, `8f76f5b`) passed: 50 tests, 43 passed, 7
+  skipped. The providers workflow now requires `Auth0,Entra`. See the [Entra guide](providers/entra.md).
+- Active: milestone 2, phase 5 (Google), research reported 2026-11-09, no code yet. Discovery
+  (`https://accounts.google.com`) advertises S256, device, and revocation endpoints, but its endpoints sit on four
+  hosts (`oauth2.googleapis.com` for token, device and revocation; `www.googleapis.com` for JWKS;
+  `openidconnect.googleapis.com` for userinfo), so the profile needs `allowedEndpointOrigins`. Findings that need
+  the maintainer's decisions before any code:
+  1. **Client secret.** Google's "Desktop app" clients get a `client_secret`. Google's installed-app guide marks it
+     optional at the token endpoint and calls desktop apps public clients, but repeated reports through October 2026
+     (and Google's own client libraries, which always send it) show the token endpoint answering `invalid_request`
+     "client_secret is missing" without it, even with PKCE. The device flow ("TVs and Limited Input devices" client)
+     sends it when polling too. Core accepts no client secret by design. Options: an explicit, documented
+     non-confidential installed-app secret in `OidcProfile`, sent as `client_secret_post` (Google's own approach);
+     or Google documented as unsupported. To confirm with a real client in the first probe.
+  2. **Device response field.** Google's device endpoint returns `verification_url`, not RFC 8628's
+     `verification_uri`, which Core requires (`ProtocolFailure`). Options: accept `verification_url` as a fallback
+     when `verification_uri` is absent, or skip Google's device flow. The verification page (`www.google.com/device`)
+     is on another host as well. Device scopes are limited to `openid email profile` (enough for the tests).
+  3. **Automated sign-in.** Google detects automated browsers ("This browser or app may not be secure") and may ask
+     a new account to verify itself. Hosted runs may never get past that. ADR 0010 section 1 allows a documented
+     reason a provider cannot be automated; the fallback is local evidence with a reused signed-in browser state.
+  Not blockers: installed apps always receive a refresh token, so no `access_type=offline` is needed, and Google
+  rejects the `offline_access` scope (`invalid_scope`), so the profile requests `openid email profile` only; Google
+  returns `email`/`profile` as `https://www.googleapis.com/auth/userinfo.*` URLs, which Core now ignores as
+  unrequested, so `GrantedScopes` may show only `openid`; refresh tokens do not rotate (*None* expected). To probe:
+  whether a loopback redirect with the `/callback/` path and any port is accepted for a Desktop client, and whether
+  ID tokens carry `iss` as `https://accounts.google.com` (Google documents `accounts.google.com` as a possible
+  value, which Core's exact match would reject). Next action: the maintainer decides items 1–3; then create a
+  Google Cloud project with a Desktop client, a TVs client, and a dedicated test account, and run a first probe.
+  Still open from phase 3: an option to send Auth0's `audience` (public API change); Google no longer needs extra
+  authorization parameters.
 - Paused: phase 2 (Okta). Decisions recorded 2026-11-02 (custom `default` server, fixed port 43823 with a one-time
   any-port probe, rotation with a 0 s grace period, consent denial via a separate app if Okta allows it); resumes
   when the maintainer has a business email for the Integrator Free Plan.
@@ -202,7 +206,7 @@ message was not captured; that suite alone then passed 11/11) and the next three
 - [ ] Phase 2: Okta (paused: free-plan sign-up needs a business email; Auth0 goes first)
 - [x] Phase 3: Auth0 (hosted run 41724808616)
 - [x] Phase 4: Microsoft Entra ID (PR #12; hosted run 42305996399)
-- [ ] Phase 5: Google
+- [ ] Phase 5: Google (research reported; decisions pending)
 - [ ] Phase 6: GitHub (docs only)
 - [ ] Phase 7: MFA requests
 - [ ] Phase 8: finish the table, guides, and README
